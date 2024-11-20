@@ -1,5 +1,8 @@
+transformers
+torch
 flask
 pandas
 openpyxl
 psycopg2-binary
+
 
