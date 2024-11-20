@@ -1,70 +1,96 @@
-# Getting Started with Create React App
+# Employee Scheduling AI
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This project leverages artificial intelligence (AI) to automate and optimize the scheduling process for law enforcement and security personnel. The system helps to efficiently assign shifts, balance time off, and account for various scheduling constraints such as holidays, training sessions, and shift preferences.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- **Automated Shift Assignment**: The AI analyzes employee availability, shift preferences, and historical data to generate optimal schedules.
+- **AI Model Integration**: The system utilizes a Hugging Face pre-trained model to predict optimal scheduling patterns based on historical data and constraints.
+- **Flexible Configuration**: The AI is designed to work with various shift models and employee preferences.
+- **Real-time Updates**: The system supports real-time updates, allowing for quick adjustments when shifts are canceled or when there are urgent changes.
+- **Excel Integration**: The AI can read and manipulate scheduling data in Excel format, making it easy to import, export, and share schedules.
 
-### `npm start`
+## Technologies Used
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **Flask**: A Python-based web framework used to create the API endpoints for the scheduling service.
+- **Pandas**: A powerful data manipulation library used for handling schedule data in Excel format.
+- **Transformers (Hugging Face)**: Pre-trained AI models used for processing and predicting the best schedules.
+- **Docker**: Used for containerizing the application to ensure that it can run consistently across different environments.
+- **PostgreSQL**: A relational database used for storing employee data and scheduling history.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Setup Instructions
 
-### `npm test`
+1. **Clone the repository**:
+   ```
+   git clone https://github.com/your-username/employee-scheduling-ai.git
+   cd employee-scheduling-ai
+   ```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+2. **Install dependencies**:
+   The project uses `requirements.txt` to manage dependencies. Install the necessary Python libraries by running:
+   ```
+   pip install -r backend/requirements.txt
+   ```
 
-### `npm run build`
+3. **Create a `.env` file**:
+   Create a `.env` file in the root directory and add your Hugging Face token:
+   ```
+   HUGGINGFACE_TOKEN=your_hugging_face_token_here
+   ```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+4. **Run the application**:
+   You can run the Flask app using the following command:
+   ```
+   python backend/app.py
+   ```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+   This will start the web server, and the API will be accessible at `http://localhost:5000`.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+5. **Docker Setup** (Optional):
+   The project includes Dockerfiles for containerizing both the backend and frontend. To build and run the application using Docker:
+   ```
+   docker-compose up --build
+   ```
 
-### `npm run eject`
+   This will launch the app in containers, including the database and web services.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## API Endpoints
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### `POST /schedule`
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+- **Description**: This endpoint processes a schedule file and returns predictions based on the provided data.
+- **Request Body**:
+  ```json
+  {
+    "file_path": "path_to_your_schedule_file.xlsx"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "message": "Schedule processed",
+    "predictions": [0, 1, 2, 1, 0]
+  }
+  ```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+### Example Input
 
-## Learn More
+- A typical input schedule file should be an Excel file with one or more sheets, where each sheet contains scheduling data (e.g., employee names, shift types, time off, etc.).
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Contributing
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+1. **Fork the repository**.
+2. **Create a new branch** for your feature or bugfix.
+3. **Make your changes** and ensure that they are tested.
+4. **Commit your changes** and push them to your fork.
+5. **Submit a pull request** describing your changes.
 
-### Code Splitting
+## License
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-### Analyzing the Bundle Size
+## Acknowledgments
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- Hugging Face for providing pre-trained models and APIs.
+- Flask for simplifying API development.
+- Pandas for handling data in a structured way.
