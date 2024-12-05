@@ -1,17 +1,18 @@
 import requests
 
-# URL for the Flask API
 url = "http://127.0.0.1:5000/schedule"
-
-# JSON data to send with the request
 data = {
-    "file_path": "Schedule_2025_GV.xlsx"  # Name of your Excel workbook
+    "employee_id": 1,
+    "shift": "morning",
+    "date": "2024-11-22",
+    "file_path": "Schedule_2025_GV.xlsx"  # Corrected JSON format
 }
 
+
+response = requests.post(url, json=data)
+
+print("Status Code:", response.status_code)
 try:
-    # Send a POST request to the API
-    response = requests.post(url, json=data)
-    # Print the response from the server
-    print("Response from server:", response.json())
-except Exception as e:
-    print("Error occurred:", e)
+    print("Response Body:", response.json())  # Try to parse JSON response
+except requests.exceptions.JSONDecodeError:
+    print("Response Body (not JSON):", response.text)  # Print plain text if JSON parsing fails

@@ -1,8 +1,9 @@
 from flask import Flask, request, jsonify
 import pandas as pd
 from huggingface_hub import login
-from transformers import AutoModelForSequenceClassification, AutoTokenizer  # Change this if needed
+from custom_model import TinyTimeMixerConfig, TinyTimeMixerForPrediction
 from dotenv import load_dotenv
+import torch
 import os
 
 # Load environment variables from .env file
@@ -13,16 +14,19 @@ token = os.getenv("HUGGINGFACE_TOKEN")
 
 if token:
     login(token=token)
+    print(f"Logged in with token: {token[:10]}...")  # To confirm token is loaded (only showing part of it)
 else:
     raise ValueError("Hugging Face token is missing!")
 
 # Initialize Flask app
 app = Flask(__name__)
 
-# Load the pre-trained model and tokenizer from Hugging Face
+# Load the pre-trained custom model
 model_name = "ibm-granite/granite-timeseries-ttm-r1"
-model = AutoModelForSequenceClassification.from_pretrained(model_name)  # Change this to the correct class if needed
-tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+# Load configuration and initialize the custom model
+config = TinyTimeMixerConfig.from_pretrained(model_name)
+model = TinyTimeMixerForPrediction(config)
 
 # Route to handle schedule processing
 @app.route('/schedule', methods=['POST'])
@@ -48,16 +52,22 @@ def load_schedule(file_path):
 def make_predictions(schedule_data):
     # Preprocess the schedule data into the format expected by the model
     input_data = preprocess_data(schedule_data)
-    inputs = tokenizer(input_data, return_tensors="pt", padding=True, truncation=True, max_length=512)
-    outputs = model(**inputs)
-    predictions = outputs.logits.argmax(axis=-1).tolist()  # This may need adjusting based on model output
+
+    # Convert the input into a tensor
+    input_tensor = torch.tensor(input_data, dtype=torch.float32).unsqueeze(0)  # Add batch dimension
+
+    # Run the input through the custom model
+    with torch.no_grad():
+        outputs = model(input_tensor)
+
+    # Process outputs (adjust based on your model's architecture)
+    predictions = outputs.tolist()
     return predictions
 
 def preprocess_data(schedule_data):
-    # Example: Convert the schedule data into a format suitable for the model
-    # This would likely involve converting numerical time-series data or structured data into the right input format
-    # Example: Convert your schedule data into text or a numerical array
-    input_data = "Preprocessed schedule data in a format suitable for time-series prediction"  # Update this
+    # Example: Convert the schedule data into a numerical format suitable for the model
+    # Replace this with actual preprocessing logic
+    input_data = [[1.0, 2.0, 3.0, 4.0, 5.0]]  # Dummy example
     return input_data
 
 # Main entry point for running the Flask app
