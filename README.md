@@ -1,5 +1,3 @@
-You are absolutely right! My apologies for breaking it up. Here is the complete, revised README content formatted as a single Markdown block, ready for your `README.md` file on GitHub:
-
 ```markdown
 # Employee Scheduling Application
 
