@@ -10,13 +10,13 @@ import os
 load_dotenv()
 
 # Get Hugging Face token from the environment
-token = os.getenv("HUGGINGFACE_TOKEN")
-
-if token:
-    login(token=token)
-    print(f"Logged in with token: {token[:10]}...")  # To confirm token is loaded (only showing part of it)
-else:
-    raise ValueError("Hugging Face token is missing!")
+#token = os.getenv("HUGGINGFACE_TOKEN")
+#
+#if token:
+#    login(token=token)
+#    print(f"Logged in with token: {token[:10]}...")  # To confirm token is loaded (only showing part of it)
+#else:
+#    raise ValueError("Hugging Face token is missing!")
 
 # Initialize Flask app
 app = Flask(__name__)

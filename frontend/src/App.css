@@ -1,38 +1,22 @@
 .App {
-  text-align: center;
+  text-align: center; /* Or left, depending on preference */
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+/* Keep or remove other styles as desired */
+/* For example, remove .App-logo, .App-header, .App-link */
+
+main {
+  padding: 20px; /* Add some padding around the calendar */
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
+header {
+  background-color: #282c34; /* Example header style */
+  padding: 10px 20px;
   color: white;
+  margin-bottom: 20px; /* Space below header */
 }
 
-.App-link {
-  color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+header h1 {
+  margin: 0;
+  font-size: 1.5em;
 }
