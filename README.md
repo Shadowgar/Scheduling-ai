@@ -1,4 +1,3 @@
-```markdown
 # Employee Scheduling Application
 
 This project is a web-based application designed to help manage employee schedules, particularly aimed at environments like law enforcement or security, but adaptable to other shift-based work. It provides a user interface for supervisors to manage employees and assign shifts, and for employees to view their schedules.
