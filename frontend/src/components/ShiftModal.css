@@ -1,0 +1,177 @@
+/* frontend/src/components/ShiftModal.css */
+
+.modal-overlay {
+    position: fixed; /* Stay in place */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6); /* Black background with opacity */
+    display: flex;
+    align-items: center; /* Center vertically */
+    justify-content: center; /* Center horizontally */
+    z-index: 1000; /* Make sure it's on top */
+  }
+  
+  .modal-content {
+    background-color: #fff;
+    padding: 20px 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 500px; /* Max width */
+    position: relative;
+    animation: slide-down 0.3s ease-out; /* Simple animation */
+  }
+  
+  @keyframes slide-down {
+    from {
+      opacity: 0;
+      transform: translateY(-30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+  }
+  
+  .modal-header h2 {
+    margin: 0;
+    font-size: 1.4em;
+  }
+  
+  .close-button {
+    background: none;
+    border: none;
+    font-size: 1.8em;
+    cursor: pointer;
+    color: #aaa;
+    padding: 0 5px;
+    line-height: 1;
+  }
+  .close-button:hover {
+      color: #333;
+  }
+  
+  .modal-body p {
+      margin: 5px 0 15px;
+      line-height: 1.5;
+  }
+  .modal-body strong {
+      margin-right: 8px;
+  }
+  
+  /* Form Styling */
+  .form-group {
+      margin-bottom: 15px;
+  }
+  .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      font-size: 0.9em;
+      color: #555;
+  }
+  .form-group input[type="datetime-local"],
+  .form-group textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box; /* Include padding in width */
+      font-size: 1em;
+  }
+  .form-group textarea {
+      resize: vertical; /* Allow vertical resize */
+  }
+  
+  /* Modal Actions (Buttons) */
+  .modal-actions {
+      margin-top: 25px;
+      padding-top: 15px;
+      border-top: 1px solid #eee;
+      display: flex;
+      justify-content: flex-end; /* Align buttons to the right */
+      gap: 10px; /* Space between buttons */
+  }
+  
+  .modal-actions button {
+      padding: 8px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9em;
+      font-weight: bold;
+      transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .modal-actions button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+  }
+  
+  
+  .save-button {
+      background-color: #28a745; /* Green */
+      color: white;
+  }
+  .save-button:hover:not(:disabled) {
+      background-color: #218838;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+  
+  .delete-button {
+      background-color: #dc3545; /* Red */
+      color: white;
+  }
+  .delete-button:hover:not(:disabled) {
+      background-color: #c82333;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+  
+  .cancel-button {
+      background-color: #6c757d; /* Gray */
+      color: white;
+  }
+  .cancel-button:hover:not(:disabled) {
+      background-color: #5a6268;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+  
+  /* Style for error messages inside the modal */
+  .modal-error {
+      color: #D8000C; /* Red text */
+      background-color: #FFD2D2; /* Light red background */
+      border: 1px solid #D8000C;
+      padding: 10px 15px;
+      margin-bottom: 15px; /* Space below error */
+      border-radius: 4px;
+      font-size: 0.9em;
+      text-align: center;
+  }
+  
+  /* Optional: Style for inline errors if needed later */
+  .error-inline {
+       color: #D8000C;
+       background-color: #FFD2D2;
+       border: 1px solid #D8000C;
+       padding: 5px 10px;
+       margin: 5px 0 10px;
+       border-radius: 4px;
+       font-size: 0.9em;
+   }
+   .error-inline button {
+       margin-left: 10px;
+       font-size: 0.9em;
+       padding: 2px 5px;
+   }

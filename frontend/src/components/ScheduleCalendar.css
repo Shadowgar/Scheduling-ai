@@ -1,47 +1,44 @@
 /* frontend/src/components/ScheduleCalendar.css */
 
+.schedule-calendar-container {
+    position: relative; /* For modal positioning context */
+}
+
 .schedule-calendar {
-    width: 98%; /* Use most of the available width */
+    width: 98%;
     margin: 20px auto;
     font-family: sans-serif;
-  }
-  
-  .calendar-header {
+}
+
+.calendar-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 15px;
     padding: 0 5px;
-  }
-  
-  .calendar-header h2 {
+}
+
+.calendar-header h2 {
     margin: 0;
     text-align: center;
     flex-grow: 1;
-  }
-  .calendar-header button {
-      padding: 5px 10px;
-      cursor: pointer;
-  }
-  
-  .calendar-grid {
+}
+.calendar-header button {
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.calendar-grid {
     display: grid;
-    /* grid-template-columns defined dynamically in component style */
-    /* Example: grid-template-columns: minmax(150px, 15%) repeat(31, minmax(28px, 1fr)); */
     border: 1px solid #ccc;
-    /* Keep overflow-x just in case it still doesn't fit on some screens */
     overflow-x: auto;
-    /* Remove fixed width/height constraints if any */
-  }
-  
-  .grid-cell {
+}
+
+.grid-cell {
     border-right: 1px solid #eee;
     border-bottom: 1px solid #eee;
-    /* --- Reduce padding significantly --- */
-    padding: 2px 3px; /* Less vertical and horizontal padding */
-    /* --- Reduce min-height slightly --- */
-    min-height: 25px;
-    /* --- Reduce base font size --- */
+    padding: 2px 3px;
+    min-height: 25px; /* Base height for header/empty cells */
     font-size: 0.75em;
     display: flex;
     align-items: center;
@@ -49,105 +46,150 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    /* --- Crucial for width calculations --- */
     box-sizing: border-box;
-  }
-  
-  .grid-header {
+}
+
+/* Styling for the combined clickable group */
+.grid-cell-group {
+    /* Inherits border from grid-cell effectively */
+    /* Background color applied via week/today classes */
+    /* Flex properties defined inline style */
+}
+
+/* Styling for the inner cells within the group */
+.grid-cell-group > .grid-cell {
+    /* Remove borders as they are on the parent group */
+    border: none;
+    /* Allow them to shrink/grow if needed, adjust min-height */
+    min-height: 12px; /* Smaller min-height for inner cells */
+    flex-shrink: 0; /* Prevent shrinking too much */
+    width: 100%; /* Take full width of parent column */
+    padding: 1px 2px; /* Minimal padding */
+}
+
+
+.grid-header {
     background-color: #f0f0f0;
     font-weight: bold;
-    position: sticky; /* Make headers sticky */
+    position: sticky;
     top: 0;
-    z-index: 10; /* Above employee names */
-  }
-  .grid-header.top-left-corner {
-      /* Ensure top-left is also sticky and above names */
-      position: sticky; /* Explicitly make sticky */
-      left: 0;
-      z-index: 11; /* Above other headers AND employee names */
-      /* Needs background to cover cells scrolling underneath */
-      background-color: #f0f0f0;
-  }
-  
-  
-  .week-day {
-    text-align: center;
-    /* Make day name font smaller */
-    font-size: 0.7em;
-    font-weight: normal; /* Less bold */
-  }
-  .date-number {
-      text-align: center;
-      font-weight: bold;
-      /* Font size inherited from .grid-cell (0.75em) */
-  }
-  
-  /* --- Sticky First Column (Employee Name/Title) --- */
-  .employee-name-cell,
-  .employee-title-cell {
+    z-index: 10;
+}
+.grid-header.top-left-corner {
     position: sticky;
     left: 0;
-    background-color: #f8f8f8; /* Needs background to cover cells scrolling underneath */
-    border-right: 1px solid #ccc; /* Stronger border */
-    text-align: left;
-    justify-content: flex-start; /* Align left */
-    z-index: 5; /* Below header */
-    /* Adjust padding if needed, but keep it readable */
-    padding-left: 5px;
-  }
-  
-  .employee-name-cell {
+    z-index: 11;
+    background-color: #f0f0f0 !important; /* Ensure background override */
+}
+
+.week-day {
+    text-align: center;
+    font-size: 0.7em;
+    font-weight: normal;
+}
+.date-number {
+    text-align: center;
     font-weight: bold;
-    /* Keep name reasonably sized */
+}
+
+/* Sticky First Column */
+.employee-name-cell,
+.employee-title-cell {
+    position: sticky;
+    left: 0;
+    background-color: #f8f8f8 !important; /* Ensure background override */
+    border-right: 1px solid #ccc;
+    text-align: left;
+    justify-content: flex-start;
+    z-index: 5;
+    padding-left: 5px;
+}
+
+.employee-name-cell {
+    font-weight: bold;
     font-size: 0.8em;
-  }
-  
-  .employee-title-cell {
-    /* Keep title reasonably sized */
+}
+
+.employee-title-cell {
     font-size: 0.7em;
     color: #555;
-  }
-  /* --- End Sticky First Column --- */
-  
-  
-  .shift-cell {
-    cursor: default;
+}
+
+/* Shift/Marking Cell Specifics */
+.shift-cell {
     justify-content: center;
     font-weight: bold;
-    /* Make shift font slightly larger than base cell if needed */
-    font-size: 0.8em; /* Adjust as needed */
-  }
-  
-  .special-marking-cell {
-      /* Make markings font smaller */
-      font-size: 0.65em;
-      color: #D8000C;
-      font-weight: bold;
-      /* Ensure text doesn't wrap */
-      white-space: nowrap;
-  }
-  
-  .separator-row {
-      min-height: 10px !important;
-      background-color: #e0e0e0;
-      border-bottom: 1px solid #aaa;
-      /* grid-column is set dynamically */
-      z-index: 1; /* Below sticky elements */
-  }
-  
-  .error {
+    font-size: 0.8em;
+    align-items: flex-end; /* Align text towards bottom */
+}
+
+.special-marking-cell {
+    font-size: 0.65em;
+    color: #D8000C;
+    font-weight: bold;
+    white-space: nowrap;
+    align-items: flex-start; /* Align text towards top */
+}
+
+.separator-row {
+    min-height: 10px !important;
+    background-color: #e0e0e0;
+    border-bottom: 1px solid #aaa;
+    z-index: 1;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* --- Week Color Classes --- */
+.week-color-even {
+  background-color: #ffffff;
+}
+.week-color-odd {
+  background-color: #f7f7f7;
+}
+
+/* --- Highlight Today's Column --- */
+.today-highlight {
+  background-color: #fffbdd !important; /* Light yellow background - use important to override week color */
+}
+.grid-header.today-highlight {
+    background-color: #ffe97d !important; /* Slightly darker yellow for header */
+}
+
+
+/* Error Styling */
+.error { /* Full width error */
     color: #D8000C;
     background-color: #FFD2D2;
-    border: 1px solid;
+    border: 1px solid #D8000C;
     margin: 10px 0px;
     padding: 15px 10px 15px 50px;
     background-repeat: no-repeat;
     background-position: 10px center;
-  }
-  
-  /* --- TODO: Add Week Color Classes --- */
-  /* These will need to be applied based on the date object */
-  /* Example:
-  .week-color-1 { background-color: #e6ffe6; }
-  .week-color-2 { background-color: #fff0e6; }
-  */
+    width: 95%; /* Adjust width as needed */
+    box-sizing: border-box;
+    margin-left: auto;
+    margin-right: auto;
+}
+.error button, .error-inline button {
+     margin-left: 15px;
+     padding: 3px 8px;
+     cursor: pointer;
+     border: 1px solid #D8000C;
+     background-color: #FFC1C1;
+     border-radius: 3px;
+ }
+ .error button:hover, .error-inline button:hover {
+     background-color: #ffaaaa;
+ }
+
+.error-inline { /* Inline error above grid */
+     color: #D8000C;
+     background-color: #FFD2D2;
+     border: 1px solid #D8000C;
+     padding: 5px 10px;
+     margin: 5px 0 10px;
+     border-radius: 4px;
+     font-size: 0.9em;
+     text-align: center;
+ }

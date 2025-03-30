@@ -5,6 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS
 from dotenv import load_dotenv
+from datetime import datetime
 from datetime import datetime # Import datetime for timestamp columns
 
 # Load environment variables from .env file
@@ -277,46 +278,47 @@ def handle_employee(employee_id):
         
 # --- Shift API Routes ---
 
+# In your backend/app.py
+
 # Route to get all shifts or create a new shift
 @app.route('/api/shifts', methods=['GET', 'POST'])
 def handle_shifts():
     if request.method == 'POST':
         # --- Create a new shift ---
+        # Your existing POST logic remains exactly the same here
         data = request.get_json()
         if not data:
             return jsonify({"error": "Invalid input"}), 400
 
-        # Basic validation
+        # Basic validation - Adjusted to match your model (employee_id is optional here)
         required_fields = ['start_time', 'end_time']
         if not all(field in data for field in required_fields):
             return jsonify({"error": "Missing required fields (start_time, end_time)"}), 400
 
         try:
-            # Parse datetime strings (assuming ISO format like YYYY-MM-DDTHH:MM:SS or YYYY-MM-DD HH:MM:SS)
-            # More robust parsing might be needed depending on frontend format
-            start_time_dt = datetime.fromisoformat(data['start_time'])
-            end_time_dt = datetime.fromisoformat(data['end_time'])
+            # Parse datetime strings (using your existing parsing)
+            start_time_dt = datetime.fromisoformat(data['start_time'].replace('Z', '+00:00'))
+            end_time_dt = datetime.fromisoformat(data['end_time'].replace('Z', '+00:00'))
+
+            # Basic validation: end time should be after start time
+            if end_time_dt <= start_time_dt:
+                return jsonify({"error": "End time must be after start time"}), 400
+
+            employee_id = data.get('employee_id') # Get optional employee_id
+
+            # Check if employee_id exists, IF provided
+            if employee_id:
+                 employee = Employee.query.get(employee_id)
+                 if not employee:
+                     return jsonify({"error": f"Employee with ID {employee_id} not found."}), 404
 
             new_shift = Shift(
                 start_time=start_time_dt,
                 end_time=end_time_dt,
-                # Optional fields:
-                employee_id=data.get('employee_id'), # Allow assigning employee on creation
-                role_required=data.get('role_required'),
-                notes=data.get('notes')
+                employee_id=employee_id, # Assign if provided
+                notes=data.get('notes') # Notes are optional
+                # removed role_required as it's not in your Shift model provided earlier
             )
-
-            # Validate end_time > start_time (using the validator we added)
-            # The validation happens implicitly when setting attributes if using @db.validates
-            # Or we can explicitly check here if not using the validator:
-            # if new_shift.end_time <= new_shift.start_time:
-            #    return jsonify({"error": "End time must be after start time"}), 400
-
-            # Check if employee_id exists, if provided
-            if new_shift.employee_id:
-                 employee = Employee.query.get(new_shift.employee_id)
-                 if not employee:
-                     return jsonify({"error": f"Employee with ID {new_shift.employee_id} not found."}), 404 # Not Found
 
             db.session.add(new_shift)
             db.session.commit()
@@ -333,15 +335,49 @@ def handle_shifts():
             return jsonify({"error": "Internal server error"}), 500
 
     elif request.method == 'GET':
-        # --- Get all shifts ---
+        # --- Get shifts with filtering ---
         try:
-            # Add filtering/sorting later if needed
-            shifts = Shift.query.order_by(Shift.start_time).all()
-            return jsonify([shift.to_dict() for shift in shifts]), 200
-        except Exception as e:
-            print(f"Error getting shifts: {e}") # Log the error
-            return jsonify({"error": "Internal server error"}), 500
+            # Get query parameters for filtering
+            year = request.args.get('year', type=int)
+            month = request.args.get('month', type=int)
 
+            # Start with a base query, ordered by start time
+            query = Shift.query.order_by(Shift.start_time)
+
+            # Apply filtering ONLY if both year and month are provided
+            if year and month:
+                # Validate month is within 1-12
+                if not 1 <= month <= 12:
+                    return jsonify({"error": "Invalid month parameter. Must be between 1 and 12."}), 400
+
+                # Calculate the start and end datetime for the requested month
+                start_datetime = datetime(year, month, 1, 0, 0, 0)
+                if month == 12:
+                    end_datetime = datetime(year + 1, 1, 1, 0, 0, 0)
+                else:
+                    end_datetime = datetime(year, month + 1, 1, 0, 0, 0)
+
+                # Filter shifts that overlap with the specified month interval [start_datetime, end_datetime)
+                query = query.filter(
+                    Shift.start_time < end_datetime,
+                    Shift.end_time > start_datetime
+                )
+
+            # Execute the final query (either filtered or unfiltered)
+            shifts = query.all()
+
+            # Serialize the results
+            return jsonify([shift.to_dict() for shift in shifts]), 200
+
+        except ValueError:
+            # Handle potential errors if year/month are not valid integers
+            return jsonify({"error": "Invalid year or month parameter. Must be integers."}), 400
+        except Exception as e:
+            # Log the error in a real application
+            print(f"Error fetching shifts: {e}")
+            return jsonify({"error": "Could not fetch shifts", "details": str(e)}), 500
+
+# Make sure you have `from datetime import datetime` at the top of your app.py file
 # Route to get, update, or delete a specific shift by ID
 @app.route('/api/shifts/<int:shift_id>', methods=['GET', 'PUT', 'DELETE'])
 def handle_shift(shift_id):
