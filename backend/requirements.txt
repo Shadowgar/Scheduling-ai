@@ -1,9 +1,6 @@
-transformers
-torch
-flask
-pandas
-openpyxl
-psycopg2-binary
-python-dotenv
-
-
+Flask>=2.0
+Flask-Cors>=3.0
+psycopg2-binary>=2.9 # PostgreSQL driver
+Flask-SQLAlchemy>=2.5 # SQLAlchemy integration for Flask
+Flask-Migrate>=3.0 # For handling database schema changes
+python-dotenv>=0.19 # For loading environment variables from a .env file

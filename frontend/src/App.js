@@ -1,60 +1,106 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
-import Header from './Header';
-import CalendarComponent from './CalendarComponent';
-import EventModal from './EventModal';
-
-// Define initial events here (moved from CalendarComponent)
-const initialEvents = [
-  { title: 'Meeting with Team', start: new Date(2025, 2, 28, 10, 0, 0), end: new Date(2025, 2, 28, 11, 0, 0), allDay: false, id: 1 }, // Add unique IDs
-  { title: 'Project Deadline', start: new Date(2025, 2, 29), end: new Date(2025, 2, 29), allDay: true, id: 2 },
-  { title: 'Lunch Break', start: new Date(2025, 2, 31, 12, 0, 0), end: new Date(2025, 2, 31, 13, 0, 0), id: 3 }
-];
-// Simple counter for unique IDs (replace with better method later if needed)
-let eventIdCounter = initialEvents.length + 1;
 
 function App() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState(null);
-  const [events, setEvents] = useState(initialEvents); // Manage events state here
+  // State to store the list of employees
+  const [employees, setEmployees] = useState([]);
+  // State to track loading status
+  const [loading, setLoading] = useState(true);
+  // State to store any error messages
+  const [error, setError] = useState(null);
 
-  const handleSelectSlot = (slotInfo) => {
-    setSelectedSlot(slotInfo);
-    setIsModalOpen(true);
-  };
+  // useEffect hook to fetch data when the component mounts
+  useEffect(() => {
+    // Define the function to fetch employees
+    const fetchEmployees = async () => {
+      try {
+        // Make the API call to the backend
+        // Ensure your Flask backend is running at http://127.0.0.1:5000
+        const response = await fetch('http://127.0.0.1:5000/api/employees');
 
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedSlot(null);
-  };
+        // Check if the response was successful
+        if (!response.ok) {
+          // If not okay, throw an error with the status text
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
-  // Update handleSaveEvent to add the event to the state
-  const handleSaveEvent = (eventData) => {
-    const newEvent = {
-      ...eventData,
-      id: eventIdCounter++, // Assign a simple unique ID
+        // Parse the JSON response
+        const data = await response.json();
+        // Update the employees state with the fetched data
+        setEmployees(data);
+        // Clear any previous errors
+        setError(null);
+      } catch (err) {
+        // If an error occurs, update the error state
+        console.error("Fetch error:", err);
+        setError(`Failed to fetch employees: ${err.message}. Is the backend server running?`);
+        // Set employees to empty array in case of error
+        setEmployees([]);
+      } finally {
+        // Set loading to false regardless of success or failure
+        setLoading(false);
+      }
     };
-    setEvents(prevEvents => [...prevEvents, newEvent]); // Add new event to the array
-    console.log("Saving event:", newEvent);
-    closeModal();
-  };
 
+    // Call the fetch function
+    fetchEmployees();
+
+    // The empty dependency array [] means this effect runs only once when the component mounts
+  }, []);
+
+  // --- Render Logic ---
+
+  // Display a loading message while data is being fetched
+  if (loading) {
+    return <div className="App">Loading employees...</div>;
+  }
+
+  // Display an error message if fetching failed
+  if (error) {
+    return <div className="App">Error: {error}</div>;
+  }
+
+  // Display the list of employees if data was fetched successfully
   return (
     <div className="App">
-      <Header />
+      <header className="App-header">
+        <h1>Employee List</h1>
+      </header>
       <main>
-        {/* Pass events state and the handler down */}
-        <CalendarComponent
-          events={events} // Pass current events
-          onSelectSlot={handleSelectSlot}
-        />
+        {employees.length > 0 ? (
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Hire Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {employees.map((employee) => (
+                <tr key={employee.id}>
+                  <td>{employee.id}</td>
+                  <td>{employee.name}</td>
+                  <td>{employee.email || 'N/A'}</td> {/* Handle potentially null email */}
+                  <td>{employee.role}</td>
+                  <td>{employee.hire_date}</td>
+                  <td>{employee.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p>No employees found. Add some via the API!</p>
+        )}
+
+        {/* We can add buttons/forms here later to add/edit employees */}
+        <hr />
+        <p><i>(Data fetched from Flask backend)</i></p>
+
       </main>
-      <EventModal
-        isOpen={isModalOpen}
-        onClose={closeModal}
-        onSave={handleSaveEvent} // Pass the updated save handler
-        slotInfo={selectedSlot}
-      />
     </div>
   );
 }
