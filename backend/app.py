@@ -342,11 +342,82 @@ def handle_shifts():
             print(f"Error getting shifts: {e}") # Log the error
             return jsonify({"error": "Internal server error"}), 500
 
-# Placeholder for specific shift operations (GET by ID, PUT, DELETE)
-# We will add this next
-# @app.route('/api/shifts/<int:shift_id>', methods=['GET', 'PUT', 'DELETE'])
-# def handle_shift(shift_id):
-#     pass # Implement later
+# Route to get, update, or delete a specific shift by ID
+@app.route('/api/shifts/<int:shift_id>', methods=['GET', 'PUT', 'DELETE'])
+def handle_shift(shift_id):
+    # --- Find the shift by ID ---
+    # Use get_or_404 to automatically return a 404 response if not found
+    shift = Shift.query.get_or_404(shift_id, description=f"Shift with ID {shift_id} not found.")
+
+    if request.method == 'GET':
+        # --- Get specific shift ---
+        return jsonify(shift.to_dict()), 200
+
+    elif request.method == 'PUT':
+        # --- Update specific shift ---
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Invalid input"}), 400
+
+        try:
+            # Update fields if they are provided in the request data
+            if 'start_time' in data:
+                shift.start_time = datetime.fromisoformat(data['start_time'])
+            if 'end_time' in data:
+                shift.end_time = datetime.fromisoformat(data['end_time'])
+
+            # Handle potential null value or change for employee_id
+            if 'employee_id' in data:
+                new_employee_id = data.get('employee_id') # Can be None or an ID
+                if new_employee_id:
+                    # Check if the new employee ID exists
+                    employee = Employee.query.get(new_employee_id)
+                    if not employee:
+                        return jsonify({"error": f"Employee with ID {new_employee_id} not found."}), 404
+                    shift.employee_id = new_employee_id
+                else:
+                    # Allow unassigning the shift
+                    shift.employee_id = None
+
+            if 'role_required' in data:
+                shift.role_required = data.get('role_required') # Allow setting to null
+            if 'notes' in data:
+                shift.notes = data.get('notes') # Allow setting to null
+
+            # Re-validate time constraint after potential updates
+            # The @db.validates decorator should handle this automatically on commit,
+            # but explicit check can be added here if needed before commit.
+            if shift.end_time <= shift.start_time:
+                 raise ValueError("End time must be after start time.")
+
+            # Note: updated_at is handled automatically by onupdate=datetime.utcnow
+
+            db.session.commit() # Save changes to the database
+            return jsonify(shift.to_dict()), 200 # Return updated shift
+
+        except ValueError as e:
+             # Handle potential errors during date conversion or validation
+            db.session.rollback()
+            return jsonify({"error": f"Invalid data format or value: {e}"}), 400
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error updating shift {shift_id}: {e}") # Log the error
+            return jsonify({"error": "Internal server error"}), 500
+
+    elif request.method == 'DELETE':
+        # --- Delete specific shift ---
+        try:
+            db.session.delete(shift)
+            db.session.commit()
+            # Option 1: Return No Content
+            # return '', 204
+            # Option 2: Return a confirmation message
+            return jsonify({"message": f"Shift with ID {shift_id} deleted successfully."}), 200
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error deleting shift {shift_id}: {e}") # Log the error
+            return jsonify({"error": "Internal server error"}), 500
 
 # --- Main Execution ---
 if __name__ == '__main__':
