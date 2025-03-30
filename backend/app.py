@@ -80,7 +80,60 @@ class Employee(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
+# --- Shift Model ---
+class Shift(db.Model):
+    __tablename__ = 'shifts'
 
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True) # Can be initially unassigned
+    start_time = db.Column(db.DateTime, nullable=False)
+    end_time = db.Column(db.DateTime, nullable=False)
+    role_required = db.Column(db.String(100), nullable=True) # Role needed for this shift (could differ from assigned employee's default role)
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # --- Relationships ---
+    # Define the relationship to Employee (one shift belongs to one employee, potentially)
+    # backref='shifts' creates a convenient 'employee.shifts' attribute to get all shifts for an employee
+    employee = db.relationship('Employee', backref=db.backref('shifts', lazy=True)) # lazy=True means shifts aren't loaded until accessed
+
+    # Representation for debugging/logging
+    def __repr__(self):
+        return f'<Shift id={self.id} start={self.start_time} employee_id={self.employee_id}>'
+
+    # Method to convert Shift object to a dictionary (for JSON responses)
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'employee_id': self.employee_id,
+            'employee_name': self.employee.name if self.employee else None, # Include employee name if assigned
+            'start_time': self.start_time.isoformat() if self.start_time else None, # Use ISO format for consistency
+            'end_time': self.end_time.isoformat() if self.end_time else None,
+            'role_required': self.role_required,
+            'notes': self.notes,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+    # Constraint to ensure end_time is after start_time (optional but good practice)
+    # Note: Database-level constraints might be more robust depending on the DB engine.
+    # This is a simple application-level check example.
+    @db.validates('start_time', 'end_time')
+    def validate_end_time(self, key, value):
+        if key == 'end_time':
+            start = self.start_time
+            end = value
+            # Ensure both are datetime objects before comparing
+            if isinstance(start, datetime) and isinstance(end, datetime) and end <= start:
+                raise ValueError("End time must be after start time.")
+        elif key == 'start_time':
+             # If start_time is being set, check against existing end_time (if any)
+            start = value
+            end = self.end_time
+            if isinstance(start, datetime) and isinstance(end, datetime) and end <= start:
+                 raise ValueError("Start time must be before end time.")
+        return value # Must return the value
 
 # --- Basic Test Route ---
 @app.route('/')
@@ -221,6 +274,79 @@ def handle_employee(employee_id):
             db.session.rollback()
             print(f"Error deleting employee {employee_id}: {e}") # Log the error
             return jsonify({"error": "Internal server error"}), 500
+        
+# --- Shift API Routes ---
+
+# Route to get all shifts or create a new shift
+@app.route('/api/shifts', methods=['GET', 'POST'])
+def handle_shifts():
+    if request.method == 'POST':
+        # --- Create a new shift ---
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Invalid input"}), 400
+
+        # Basic validation
+        required_fields = ['start_time', 'end_time']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields (start_time, end_time)"}), 400
+
+        try:
+            # Parse datetime strings (assuming ISO format like YYYY-MM-DDTHH:MM:SS or YYYY-MM-DD HH:MM:SS)
+            # More robust parsing might be needed depending on frontend format
+            start_time_dt = datetime.fromisoformat(data['start_time'])
+            end_time_dt = datetime.fromisoformat(data['end_time'])
+
+            new_shift = Shift(
+                start_time=start_time_dt,
+                end_time=end_time_dt,
+                # Optional fields:
+                employee_id=data.get('employee_id'), # Allow assigning employee on creation
+                role_required=data.get('role_required'),
+                notes=data.get('notes')
+            )
+
+            # Validate end_time > start_time (using the validator we added)
+            # The validation happens implicitly when setting attributes if using @db.validates
+            # Or we can explicitly check here if not using the validator:
+            # if new_shift.end_time <= new_shift.start_time:
+            #    return jsonify({"error": "End time must be after start time"}), 400
+
+            # Check if employee_id exists, if provided
+            if new_shift.employee_id:
+                 employee = Employee.query.get(new_shift.employee_id)
+                 if not employee:
+                     return jsonify({"error": f"Employee with ID {new_shift.employee_id} not found."}), 404 # Not Found
+
+            db.session.add(new_shift)
+            db.session.commit()
+
+            return jsonify(new_shift.to_dict()), 201 # Return created shift with 201 status
+
+        except ValueError as e:
+            db.session.rollback()
+            # Handle potential errors during date conversion or validation
+            return jsonify({"error": f"Invalid data format or value: {e}"}), 400
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error creating shift: {e}") # Log the error
+            return jsonify({"error": "Internal server error"}), 500
+
+    elif request.method == 'GET':
+        # --- Get all shifts ---
+        try:
+            # Add filtering/sorting later if needed
+            shifts = Shift.query.order_by(Shift.start_time).all()
+            return jsonify([shift.to_dict() for shift in shifts]), 200
+        except Exception as e:
+            print(f"Error getting shifts: {e}") # Log the error
+            return jsonify({"error": "Internal server error"}), 500
+
+# Placeholder for specific shift operations (GET by ID, PUT, DELETE)
+# We will add this next
+# @app.route('/api/shifts/<int:shift_id>', methods=['GET', 'PUT', 'DELETE'])
+# def handle_shift(shift_id):
+#     pass # Implement later
 
 # --- Main Execution ---
 if __name__ == '__main__':
