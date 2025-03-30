@@ -1,96 +1,205 @@
-# Employee Scheduling AI
+You are absolutely right! My apologies for breaking it up. Here is the complete, revised README content formatted as a single Markdown block, ready for your `README.md` file on GitHub:
 
-This project leverages artificial intelligence (AI) to automate and optimize the scheduling process for law enforcement and security personnel. The system helps to efficiently assign shifts, balance time off, and account for various scheduling constraints such as holidays, training sessions, and shift preferences.
+```markdown
+# Employee Scheduling Application
 
-## Features
+This project is a web-based application designed to help manage employee schedules, particularly aimed at environments like law enforcement or security, but adaptable to other shift-based work. It provides a user interface for supervisors to manage employees and assign shifts, and for employees to view their schedules.
 
-- **Automated Shift Assignment**: The AI analyzes employee availability, shift preferences, and historical data to generate optimal schedules.
-- **AI Model Integration**: The system utilizes a Hugging Face pre-trained model to predict optimal scheduling patterns based on historical data and constraints.
-- **Flexible Configuration**: The AI is designed to work with various shift models and employee preferences.
-- **Real-time Updates**: The system supports real-time updates, allowing for quick adjustments when shifts are canceled or when there are urgent changes.
-- **Excel Integration**: The AI can read and manipulate scheduling data in Excel format, making it easy to import, export, and share schedules.
+While the initial concept involved direct AI integration for schedule optimization (as reflected in earlier descriptions), the current implementation focuses on providing a robust manual scheduling interface with role-based access control. Future development could integrate AI features for suggestion or automation.
+
+## Core Features
+
+-   **User Authentication**: Secure login/logout functionality using JWT (JSON Web Tokens).
+-   **Role-Based Access Control**: Differentiates between 'supervisor' and other roles (e.g., 'employee', 'police', 'security'), granting different permissions.
+    -   Supervisors can manage employees and shifts.
+    -   Other logged-in users can view the schedule (future features could include requests).
+    -   Anonymous users can view the main schedule calendar.
+-   **Employee Management**: Supervisors can Create, Read, Update, and Delete employee records.
+-   **Shift Management**: Supervisors can Create, Read, Update, and Delete shifts for employees.
+-   **Interactive Calendar View**: Displays shifts on a monthly calendar grid.
+    -   Visually distinguishes weekends/week parity (configurable).
+    -   Allows supervisors to click cells to add/edit shifts via a modal.
+-   **RESTful API Backend**: Built with Flask, providing endpoints for frontend interaction.
+-   **React Frontend**: A dynamic user interface built with React.
 
 ## Technologies Used
 
-- **Flask**: A Python-based web framework used to create the API endpoints for the scheduling service.
-- **Pandas**: A powerful data manipulation library used for handling schedule data in Excel format.
-- **Transformers (Hugging Face)**: Pre-trained AI models used for processing and predicting the best schedules.
-- **Docker**: Used for containerizing the application to ensure that it can run consistently across different environments.
-- **PostgreSQL**: A relational database used for storing employee data and scheduling history.
+-   **Backend**:
+    -   Python
+    -   Flask (Web Framework)
+    -   Flask-SQLAlchemy (ORM)
+    -   Flask-Migrate (Database Migrations)
+    -   Flask-JWT-Extended (Authentication)
+    -   Flask-CORS (Cross-Origin Resource Sharing)
+    -   Werkzeug (Password Hashing, WSGI utilities)
+    -   python-dotenv (Environment Variables)
+-   **Frontend**:
+    -   JavaScript
+    -   React
+    -   React Router (Navigation)
+    -   CSS (Styling)
+    -   `fetch` API (Backend communication)
+-   **Database**:
+    -   PostgreSQL
+-   **Containerization (Optional)**:
+    -   Docker
+    -   Docker Compose
 
+## Project Structure
+```
+
+employee-scheduling-ai/
+├── backend/
+│   ├── migrations/
+│   ├── venv/          # Virtual environment (ignored by git)
+│   ├── app.py         # Main Flask application
+│   ├── models.py      # (Optional separation for DB models)
+│   ├── requirements.txt # Backend Python dependencies
+│   └── .env           # Backend environment variables (ignored by git)
+├── frontend/
+│   ├── node_modules/  # Node dependencies (ignored by git)
+│   ├── public/
+│   ├── src/           # React source code
+│   ├── package.json   # Frontend dependencies and scripts
+│   └── .env.local     # Frontend environment variables (ignored by git)
+├── docker-compose.yml # (If using Docker)
+├── Dockerfile.backend # (If using Docker)
+├── Dockerfile.frontend # (If using Docker)
+└── README.md        # This file
+
+```javascript
 ## Setup Instructions
 
-1. **Clone the repository**:
-   ```
-   git clone https://github.com/your-username/employee-scheduling-ai.git
-   cd employee-scheduling-ai
-   ```
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/your-username/employee-scheduling-ai.git # Replace with your repo URL
+    cd employee-scheduling-ai
+```
 
-2. **Install dependencies**:
-   The project uses `requirements.txt` to manage dependencies. Install the necessary Python libraries by running:
-   ```
-   pip install -r backend/requirements.txt
-   ```
+2.  **Backend Setup**:
 
-3. **Create a `.env` file**:
-   Create a `.env` file in the root directory and add your Hugging Face token:
-   ```
-   HUGGINGFACE_TOKEN=your_hugging_face_token_here
-   ```
+```bash
+    cd backend
 
-4. **Run the application**:
-   You can run the Flask app using the following command:
-   ```
-   python backend/app.py
-   ```
+    # Create and activate a Python virtual environment
+    python -m venv venv
+    # On Windows:
+    .\venv\Scripts\activate
+    # On macOS/Linux:
+    # source venv/bin/activate
 
-   This will start the web server, and the API will be accessible at `http://localhost:5000`.
+    # Install Python dependencies
+    pip install -r requirements.txt
 
-5. **Docker Setup** (Optional):
-   The project includes Dockerfiles for containerizing both the backend and frontend. To build and run the application using Docker:
-   ```
-   docker-compose up --build
-   ```
+    # Create a .env file in the 'backend' directory
+    # Add your database connection string and a JWT secret key:
+    # Example .env content:
+    # DATABASE_URL=postgresql://user:password@host:port/database_name
+    # JWT_SECRET_KEY=your_strong_random_secret_key_here
 
-   This will launch the app in containers, including the database and web services.
+    # Ensure your PostgreSQL database server is running and the specified database exists.
+
+    # Initialize and apply database migrations
+    # (Run these commands inside the 'backend' directory with venv active)
+    flask db init  # Only needed the very first time
+    flask db migrate -m "Initial database schema" # Or a descriptive message
+    flask db upgrade # Apply migrations to the database
+```
+
+    *Note: You might need to set `FLASK_APP=app.py` as an environment variable before running `flask db` commands if your OS doesn't pick it up automatically.*
+
+3.  **Frontend Setup**:
+
+```bash
+    cd ../frontend
+
+    # Install JavaScript dependencies
+    npm install
+    # or if you use yarn:
+    # yarn install
+```
+
+    *Note: The frontend uses a proxy setting in `package.json` to communicate with the backend during development.*
+
+## Running the Application
+
+1.  **Run the Backend Server**:
+
+    -   Navigate to the `backend` directory.
+    -   Ensure your virtual environment is activated.
+    -   Ensure your PostgreSQL server is running.
+    -   Start the Flask development server:
+
+```bash
+        flask run
+```
+
+    -   The backend API will typically be available at `http://localhost:5000`.
+
+2.  **Run the Frontend Development Server**:
+
+    -   Navigate to the `frontend` directory in a **separate terminal**.
+    -   Start the React development server:
+
+```bash
+        npm start
+        # or
+        # yarn start
+```
+
+    -   The frontend application will typically open automatically in your browser at `http://localhost:3000`.
 
 ## API Endpoints
 
-### `POST /schedule`
+The backend provides the following REST API endpoints under the `/api` prefix:
 
-- **Description**: This endpoint processes a schedule file and returns predictions based on the provided data.
-- **Request Body**:
-  ```json
-  {
-    "file_path": "path_to_your_schedule_file.xlsx"
-  }
-  ```
-- **Response**:
-  ```json
-  {
-    "message": "Schedule processed",
-    "predictions": [0, 1, 2, 1, 0]
-  }
-  ```
+-   **Authentication:**
+    -   `POST /api/auth/login`: Authenticate user, returns JWT token and user info.
+    -   `GET /api/auth/me`: Get current logged-in user's info (requires valid JWT).
+-   **Employees:**
+    -   `GET /api/employees`: List all employees (viewable by anyone).
+    -   `POST /api/employees`: Create a new employee (requires supervisor JWT).
+    -   `GET /api/employees/<id>`: Get details for a specific employee (requires JWT; supervisor or self).
+    -   `PUT /api/employees/<id>`: Update details for a specific employee (requires JWT; supervisor or self, with field restrictions).
+    -   `DELETE /api/employees/<id>`: Delete an employee (requires supervisor JWT).
+-   **Shifts:**
+    -   `GET /api/shifts`: List shifts (viewable by anyone; requires `year` and `month` query params).
+    -   `POST /api/shifts`: Create a new shift (requires supervisor JWT).
+    -   `GET /api/shifts/<id>`: Get details for a specific shift (requires JWT).
+    -   `PUT /api/shifts/<id>`: Update a specific shift (requires supervisor JWT).
+    -   `DELETE /api/shifts/<id>`: Delete a specific shift (requires supervisor JWT).
 
-### Example Input
+## Docker Setup (Optional)
 
-- A typical input schedule file should be an Excel file with one or more sheets, where each sheet contains scheduling data (e.g., employee names, shift types, time off, etc.).
+If `docker-compose.yml` and associated `Dockerfile`s are configured:
+
+1.  Ensure Docker and Docker Compose are installed.
+2.  Make sure your `.env` file is correctly set up in the `backend` directory (Docker Compose might be configured to use it).
+3.  From the project root directory:
+
+```bash
+    docker-compose up --build
+```
+
+4.  This command should build the images for the frontend, backend, and potentially the database, then start the containers. Access the application via the port exposed by the frontend service (likely `localhost:3000`).
 
 ## Contributing
 
-1. **Fork the repository**.
-2. **Create a new branch** for your feature or bugfix.
-3. **Make your changes** and ensure that they are tested.
-4. **Commit your changes** and push them to your fork.
-5. **Submit a pull request** describing your changes.
+1.  Fork the repository.
+2.  Create a new branch for your feature or bugfix (`git checkout -b feature/your-feature-name`).
+3.  Make your changes and ensure they are tested.
+4.  Commit your changes (`git commit -am 'Add some feature'`).
+5.  Push the branch to your fork (`git push origin feature/your-feature-name`).
+6.  Submit a pull request to the original repository.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is likely licensed under the MIT License (verify `LICENSE` file).
 
 ## Acknowledgments
 
-- Hugging Face for providing pre-trained models and APIs.
-- Flask for simplifying API development.
-- Pandas for handling data in a structured way.
+-   Flask development team and community.
+-   React development team and community.
+-   Contributors to Flask extensions (SQLAlchemy, Migrate, JWT-Extended, CORS).
+-   PostgreSQL development team.
+```
