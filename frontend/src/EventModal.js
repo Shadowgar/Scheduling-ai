@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'; // Added useState, useEffect
+import React, { useState, useEffect } from 'react';
 
-function EventModal({ isOpen, onClose, onSave, slotInfo }) {
+// Accept modalStyle and backdropStyle as props here
+function EventModal({ isOpen, onClose, onSave, slotInfo, modalStyle, backdropStyle }) {
   const [title, setTitle] = useState(''); // State for the event title input
 
   // Reset title when modal opens with new slotInfo
@@ -10,15 +11,12 @@ function EventModal({ isOpen, onClose, onSave, slotInfo }) {
     }
   }, [isOpen]); // Dependency array ensures this runs when isOpen changes
 
+  // Don't render anything if not open or no slot selected
   if (!isOpen || !slotInfo) {
     return null;
   }
 
-  // Styles remain the same
-  const modalStyle = { /* ... (keep existing style object) ... */ };
-  const backdropStyle = { /* ... (keep existing style object) ... */ };
-
-   // Function to handle the save action
+  // Function to handle the save action
   const handleInternalSave = () => {
     if (!title.trim()) { // Basic validation: don't save if title is empty
         alert("Please enter an event title.");
@@ -35,34 +33,37 @@ function EventModal({ isOpen, onClose, onSave, slotInfo }) {
     onSave(eventData); // Pass data up to App component
   };
 
+  // The JSX uses the modalStyle and backdropStyle props passed in
   return (
     <>
-      <div style={backdropStyle} onClick={onClose}></div>
-      <div style={modalStyle}>
+      <div style={backdropStyle} onClick={onClose}></div> {/* Use backdropStyle prop */}
+      <div style={modalStyle}> {/* Use modalStyle prop */}
         <h2>Add New Event</h2>
         <p>
           Time: {slotInfo.start.toLocaleString()} - {slotInfo.end.toLocaleString()}
         </p>
         <div>
-          <label htmlFor="eventTitle">Title: </label>
+          <label htmlFor="eventTitle" style={{ marginRight: '5px' }}>Title:</label>
           <input
             id="eventTitle"
             type="text"
             placeholder="Event Title"
             value={title} // Controlled input
             onChange={(e) => setTitle(e.target.value)} // Update state on change
-            style={{ width: '80%', marginBottom: '15px' }} // Basic styling
+            style={{ width: '80%', marginBottom: '15px', padding: '5px' }} // Basic styling
             autoFocus // Focus the input when modal opens
           />
         </div>
-        <hr />
+        <hr style={{ margin: '15px 0' }}/>
         <button onClick={handleInternalSave}>Save Event</button>
         <button onClick={onClose} style={{ marginLeft: '10px' }}>Cancel</button>
       </div>
     </>
   );
 }
-// Need to copy the actual style objects back in
+
+// Default props define the styles if they aren't overridden by the parent
+// These styles are crucial for the modal overlay behavior
 EventModal.defaultProps = {
     modalStyle: {
         position: 'fixed',
@@ -70,11 +71,11 @@ EventModal.defaultProps = {
         left: '50%',
         transform: 'translate(-50%, -50%)',
         backgroundColor: 'white',
-        padding: '20px 40px', // More padding
+        padding: '20px 40px',
         border: '1px solid #ccc',
-        borderRadius: '8px', // Slightly more rounded
-        zIndex: 1000,
-        boxShadow: '0 5px 15px rgba(0, 0, 0, 0.2)', // Softer shadow
+        borderRadius: '8px',
+        zIndex: 1000, // Ensure it's above other content
+        boxShadow: '0 5px 15px rgba(0, 0, 0, 0.2)',
         minWidth: '300px', // Minimum width
     },
     backdropStyle: {
@@ -83,8 +84,8 @@ EventModal.defaultProps = {
         left: 0,
         width: '100%',
         height: '100%',
-        backgroundColor: 'rgba(0, 0, 0, 0.6)', // Darker backdrop
-        zIndex: 999,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)', // Semi-transparent backdrop
+        zIndex: 999, // Below modal, above everything else
     }
 };
 
