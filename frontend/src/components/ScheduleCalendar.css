@@ -31,7 +31,9 @@
 .calendar-grid {
     display: grid;
     border: 1px solid #ccc;
-    overflow-x: auto;
+    overflow-x: auto; /* Enable horizontal scrolling if needed */
+    overflow-y: hidden; /* Often don't need vertical scroll on grid itself */
+    max-height: 80vh; /* Limit height to encourage scrolling */
 }
 
 .grid-cell {
@@ -78,8 +80,8 @@
 .grid-header.top-left-corner {
     position: sticky;
     left: 0;
-    z-index: 11;
-    background-color: #f0f0f0 !important; /* Ensure background override */
+    z-index: 11; /* Higher than row headers */
+    background-color: #e0e0e0 !important; /* Slightly different bg */
 }
 
 .week-day {
@@ -98,11 +100,14 @@
     position: sticky;
     left: 0;
     background-color: #f8f8f8 !important; /* Ensure background override */
-    border-right: 1px solid #ccc;
+    border-right: 1px solid #ccc; /* Stronger border for sticky column */
     text-align: left;
     justify-content: flex-start;
-    z-index: 5;
+    z-index: 5; /* Lower than header corners */
     padding-left: 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .employee-name-cell {
@@ -133,6 +138,7 @@
 
 .separator-row {
     min-height: 10px !important;
+    height: 10px !important; /* Fixed height */
     background-color: #e0e0e0;
     border-bottom: 1px solid #aaa;
     z-index: 1;
@@ -154,6 +160,15 @@
 }
 .grid-header.today-highlight {
     background-color: #ffe97d !important; /* Slightly darker yellow for header */
+}
+
+/* --- Clickable Cell Indication --- */
+.grid-cell-group.clickable-cell {
+  cursor: pointer;
+}
+/* Optional: Add hover effect only for clickable cells */
+.grid-cell-group.clickable-cell:hover {
+   background-image: linear-gradient(rgba(0,0,0,0.03), rgba(0,0,0,0.03));
 }
 
 
@@ -193,3 +208,42 @@
      font-size: 0.9em;
      text-align: center;
  }
+
+ /* Specific styling for the role switcher in App.js header */
+ .App .role-switcher {
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: #f0f0f0; /* Consistent with grid header */
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 0.9em;
+  text-align: center;
+}
+.App .role-switcher span {
+    margin-right: 10px;
+    font-weight: bold;
+}
+.App .role-switcher button {
+    padding: 3px 8px;
+    cursor: pointer;
+    border: 1px solid #aaa;
+    border-radius: 3px;
+    background-color: #fff;
+}
+.App .role-switcher button:hover:not(:disabled) {
+    background-color: #e9e9e9;
+}
+.App .role-switcher button:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+    background-color: #d0d0d0;
+}
+.App .role-switcher p {
+    font-style: italic;
+    color: #333;
+}
+
+/* Ensure main content area is visible below header */
+.App main {
+    padding-top: 10px; /* Adjust as needed */
+}

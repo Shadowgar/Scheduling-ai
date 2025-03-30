@@ -11,7 +11,6 @@ const getDayName = (date) => {
 // Helper function to format date as YYYY-MM-DD string (consistent key for map)
 const formatDateKey = (date) => {
     if (!(date instanceof Date) || isNaN(date)) {
-        // console.error("Invalid date passed to formatDateKey:", date); // Reduce console noise
         return null;
     }
     const year = date.getFullYear();
@@ -38,7 +37,8 @@ const roleOrder = ['supervisor', 'police', 'security']; // Lowercase for compari
 const todayDateStr = formatDateKey(new Date()); // Get 'YYYY-MM-DD' for today
 
 
-const ScheduleCalendar = () => {
+// Accept userRole prop
+const ScheduleCalendar = ({ userRole }) => {
     // --- State ---
     const [currentDate, setCurrentDate] = useState(new Date());
     const [employees, setEmployees] = useState([]);
@@ -201,9 +201,22 @@ const ScheduleCalendar = () => {
         return '';
     };
 
-    // --- Click Handler for Cells ---
+    // --- Click Handler for Cells (Modified for RBAC) ---
     const handleCellClick = (employee, date, shift) => {
-        setSelectedCellData({ employeeId: employee.id, employeeName: employee.name, date: date, shift: shift });
+        // *** Only allow supervisors to open the edit modal ***
+        if (userRole !== 'supervisor') {
+            console.log(`Role "${userRole}" cannot edit shifts.`);
+            // Optionally: open a read-only modal later
+            return; // Stop execution for non-supervisors
+        }
+
+        // Proceed for supervisor
+        setSelectedCellData({
+            employeeId: employee.id,
+            employeeName: employee.name,
+            date: date,
+            shift: shift
+        });
         setIsModalOpen(true);
     };
 
@@ -293,17 +306,21 @@ const ScheduleCalendar = () => {
                                     const weekColorClass = `week-color-${weekParity}`;
                                     const isToday = formatDateKey(date) === todayDateStr;
                                     const todayClass = isToday ? 'today-highlight' : '';
+                                    // *** Conditionally add clickable class ***
+                                    const clickableClass = userRole === 'supervisor' ? 'clickable-cell' : '';
 
                                     return (
                                         <div
                                             key={`cell-group-${employee.id}-${index}`}
-                                            className={`grid-cell-group ${weekColorClass} ${todayClass}`}
+                                            // *** Add clickableClass ***
+                                            className={`grid-cell-group ${weekColorClass} ${todayClass} ${clickableClass}`}
                                             style={{
                                                 gridRow: `${shiftDataRow} / span ${ROWS_PER_EMPLOYEE}`, gridColumn: currentDataColumn,
-                                                display: 'flex', flexDirection: 'column', padding: 0, cursor: 'pointer',
+                                                display: 'flex', flexDirection: 'column', padding: 0,
+                                                // *** Removed inline cursor style ***
                                                 borderRight: '1px solid #eee', borderBottom: '1px solid #eee'
                                             }}
-                                            onClick={() => handleCellClick(employee, date, shift)}
+                                            onClick={() => handleCellClick(employee, date, shift)} // Click logic now checks role inside function
                                             title={shift?.notes || `Assign shift for ${employee.name} on ${formatDateKey(date)}`}
                                         >
                                             <div className={`grid-cell shift-cell`} style={{border:'none', minHeight: '12px'}} >{formatShiftDisplay(shift)}</div>
@@ -320,13 +337,15 @@ const ScheduleCalendar = () => {
                 </div> {/* End calendar-grid */}
             </div> {/* End schedule-calendar */}
 
-            {/* Modal */}
+            {/* Modal - Render logic unchanged, but opening is now controlled */}
             {isModalOpen && selectedCellData && (
                 <ShiftModal
                     isOpen={isModalOpen}
                     onClose={handleCloseModal}
                     cellData={selectedCellData}
                     onShiftUpdate={handleShiftUpdate}
+                    // Consider passing userRole here if modal needs internal RBAC, e.g., for delete button
+                    // userRole={userRole}
                 />
             )}
         </div> // End schedule-calendar-container

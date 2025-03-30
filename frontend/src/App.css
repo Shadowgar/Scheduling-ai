@@ -1,22 +1,82 @@
+/* frontend/src/App.css */
+
 .App {
-  text-align: center; /* Or left, depending on preference */
+  text-align: center; /* Basic centering for the header content */
 }
 
-/* Keep or remove other styles as desired */
-/* For example, remove .App-logo, .App-header, .App-link */
-
-main {
-  padding: 20px; /* Add some padding around the calendar */
-}
-
-header {
-  background-color: #282c34; /* Example header style */
-  padding: 10px 20px;
+.App-header {
+  background-color: #282c34; /* Example header background */
+  padding: 15px;
   color: white;
-  margin-bottom: 20px; /* Space below header */
+  margin-bottom: 10px; /* Space between header and main content */
 }
 
-header h1 {
-  margin: 0;
-  font-size: 1.5em;
+.App-header h1 {
+    margin: 0 0 10px 0; /* Adjust spacing around title */
+}
+
+/* Styles for the role switcher (also included in ScheduleCalendar.css for completeness, */
+/* but ideally defined once globally or in App.css) */
+.role-switcher {
+  margin-bottom: 5px; /* Reduced bottom margin within header */
+  padding: 10px;
+  background-color: #444; /* Darker background within header */
+  border: 1px solid #666;
+  border-radius: 5px;
+  font-size: 0.9em;
+  text-align: center;
+  color: #eee; /* Lighter text */
+}
+.role-switcher span {
+    margin-right: 10px;
+    font-weight: bold;
+}
+.role-switcher button {
+    padding: 3px 8px;
+    cursor: pointer;
+    border: 1px solid #aaa;
+    border-radius: 3px;
+    background-color: #eee; /* Light buttons */
+    color: #333; /* Dark text on buttons */
+}
+.role-switcher button:hover:not(:disabled) {
+    background-color: #ddd;
+}
+.role-switcher button:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+    background-color: #bbb;
+}
+.role-switcher p {
+    font-style: italic;
+    color: #ccc; /* Lighter text for status */
+    font-size: 0.9em; /* Match surrounding text */
+    margin: 8px 0 0 0 !important; /* Override inline style margin if needed */
+}
+
+/* Navigation Links */
+.main-nav {
+  padding: 10px 0;
+  margin-bottom: 15px;
+  background-color: #3a3f47; /* Slightly lighter than header */
+  text-align: center;
+}
+
+.main-nav a {
+  color: #e0e0e0;
+  text-decoration: none;
+  padding: 10px 15px;
+  margin: 0 5px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.main-nav a:hover {
+  background-color: #52575f;
+  color: #fff;
+}
+
+/* Ensure main content area is visible */
+.App main {
+    padding: 10px; /* Add some padding around the calendar */
 }
