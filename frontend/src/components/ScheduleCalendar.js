@@ -15,19 +15,24 @@ const formatDateKey = (date) => {
     return `${year}-${month}-${day}`;
 };
 const getWeekParity = (date, firstDayOfMonth) => {
-    const firstDayOfMonthDayOfWeek = firstDayOfMonth.getDay();
+    const firstDayOfMonthDayOfWeek = firstDayOfMonth.getDay(); // 0=Sun, 6=Sat
     const msPerDay = 1000 * 60 * 60 * 24;
+    // Calculate the date of the Sunday at the start of the week the month begins in
     const startOfWeekMonthStarts = new Date(firstDayOfMonth.getTime() - firstDayOfMonthDayOfWeek * msPerDay);
     const diffInTime = date.getTime() - startOfWeekMonthStarts.getTime();
     const diffInDays = Math.floor(diffInTime / msPerDay);
-    const weekNumber = Math.floor(diffInDays / 7);
-    return weekNumber % 2 === 0 ? 'even' : 'odd';
+    const weekNumber = Math.floor(diffInDays / 7); // 0-based week number within the displayed calendar block
+    return weekNumber % 2 === 0 ? 'even' : 'odd'; // Alternate week colors
 };
-const roleOrder = ['supervisor', 'police', 'security'];
+const roleOrder = ['supervisor', 'police', 'security']; // Define desired role order
 const todayDateStr = formatDateKey(new Date());
 
 // --- Component Starts ---
-const ScheduleCalendar = ({ userRole }) => { // userRole prop is important for edit permissions
+// *** FIX: Accept currentUser prop instead of userRole ***
+const ScheduleCalendar = ({ currentUser }) => {
+    // *** FIX: Derive userRole from currentUser ***
+    const userRole = currentUser?.role; // Use optional chaining
+
     // --- State ---
     const [currentDate, setCurrentDate] = useState(new Date());
     const [employees, setEmployees] = useState([]);
@@ -36,6 +41,11 @@ const ScheduleCalendar = ({ userRole }) => { // userRole prop is important for e
     const [error, setError] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCellData, setSelectedCellData] = useState(null);
+
+    // *** DEBUG: Log the received currentUser prop and derived role ***
+    console.log('[ScheduleCalendar] Received currentUser prop:', currentUser);
+    console.log('[ScheduleCalendar] Derived userRole:', userRole);
+
 
     // --- Data Fetching Logic (Shifts) ---
     const fetchShiftData = useCallback(async () => {
@@ -46,7 +56,7 @@ const ScheduleCalendar = ({ userRole }) => { // userRole prop is important for e
 
         // *** USE RELATIVE URL FOR PROXY ***
         const shiftsApiUrl = `/api/shifts?year=${year}&month=${month}`;
-        console.log('Fetching/Refreshing shifts from:', shiftsApiUrl);
+        // console.log('Fetching/Refreshing shifts from:', shiftsApiUrl); // Keep less noisy
 
         // *** Get token (if available) ***
         const token = localStorage.getItem('accessToken');
@@ -56,9 +66,9 @@ const ScheduleCalendar = ({ userRole }) => { // userRole prop is important for e
         // *** Add Authorization header ONLY if token exists ***
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
-            console.log('Fetching shifts WITH token.');
+            // console.log('Fetching shifts WITH token.'); // Keep less noisy
         } else {
-            console.log('Fetching shifts WITHOUT token (anonymous view).');
+            // console.log('Fetching shifts WITHOUT token (anonymous view).'); // Keep less noisy
         }
 
         try {
@@ -68,7 +78,7 @@ const ScheduleCalendar = ({ userRole }) => { // userRole prop is important for e
                 headers: headers // Pass constructed headers
             });
 
-            // --- Response Handling (mostly unchanged) ---
+            // --- Response Handling ---
             if (!shiftResponse.ok) {
                 // If backend requires auth and token was missing/invalid, this might be 401
                 let errorDetails = `Network response for shifts was not ok (${shiftResponse.status})`;
@@ -130,9 +140,9 @@ const ScheduleCalendar = ({ userRole }) => { // userRole prop is important for e
         // *** Add Authorization header ONLY if token exists ***
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
-            console.log('Fetching employees WITH token.');
+            // console.log('Fetching employees WITH token.'); // Keep less noisy
         } else {
-            console.log('Fetching employees WITHOUT token (anonymous view).');
+            // console.log('Fetching employees WITHOUT token (anonymous view).'); // Keep less noisy
         }
 
         try {
@@ -193,16 +203,16 @@ const ScheduleCalendar = ({ userRole }) => { // userRole prop is important for e
     // --- Initial Data Fetch Effect (now uses the defined fetchInitialData) ---
     useEffect(() => {
         let isMounted = true;
-        
+
         const loadData = async () => {
             if (isMounted) {
                 await fetchInitialData();
             }
         };
-        
+
         loadData();
-        
-        return () => { 
+
+        return () => {
             isMounted = false;
         };
     }, [fetchInitialData]); // Dependency on the memoized fetchInitialData function
@@ -232,8 +242,8 @@ const ScheduleCalendar = ({ userRole }) => { // userRole prop is important for e
     const findShiftForCell = (employeeId, date) => {
         const dateKey = formatDateKey(date);
         if (!dateKey) return null;
-        const employeeMap = shiftLookup.get(employeeId);
-        return employeeMap ? employeeMap.get(dateKey) : undefined; // Return undefined if employee map doesn't exist
+        // Optional chaining: return undefined if employeeId not in shiftLookup
+        return shiftLookup.get(employeeId)?.get(dateKey);
     };
 
     // --- Helper: Format Shift Display (Unchanged, assuming correct) ---
@@ -270,35 +280,43 @@ const ScheduleCalendar = ({ userRole }) => { // userRole prop is important for e
         return '';
     };
 
-    // --- Click Handler for Cells (Checks Role for Editing - Unchanged) ---
+    // --- Click Handler for Cells (Checks Role for Editing - Debug Logs Added) ---
     const handleCellClick = (employee, date, shift) => {
-        // *** Only allow supervisors to open the edit modal ***
+        // *** DEBUG: Log the click event and the role check ***
+        console.log(`[ScheduleCalendar] handleCellClick fired for Employee: ${employee?.name}, Date: ${formatDateKey(date)}`);
+        // *** The userRole variable is now derived from the currentUser prop ***
+        console.log(`[ScheduleCalendar] Checking userRole in handleCellClick: "${userRole}"`);
+
         if (userRole !== 'supervisor') {
-            console.log(`Role "${userRole || 'anonymous'}" cannot edit shifts.`);
-            // Maybe show a read-only view or just do nothing
+            console.log(`[ScheduleCalendar] Role is NOT supervisor. Preventing modal.`);
             return; // Stop execution for non-supervisors
         }
 
-        // Proceed for supervisor
-        console.log('Supervisor clicked cell, opening modal for:', employee.name, formatDateKey(date));
-        setSelectedCellData({
+        // *** DEBUG: Log state updates if supervisor ***
+        console.log('[ScheduleCalendar] Role IS supervisor. Setting modal state...');
+        const cellPayload = {
             employeeId: employee.id,
             employeeName: employee.name,
             date: date, // Pass the full Date object
             shift: shift // Pass the existing shift data (or null)
-        });
+        };
+        console.log('[ScheduleCalendar] Setting selectedCellData:', cellPayload);
+        setSelectedCellData(cellPayload);
+        console.log('[ScheduleCalendar] Setting isModalOpen to true');
         setIsModalOpen(true);
     };
 
-    // --- Function to close modal (Unchanged) ---
+
+    // --- Function to close modal (Debug Log Added) ---
     const handleCloseModal = () => {
+        console.log('[ScheduleCalendar] Closing modal.'); // DEBUG log
         setIsModalOpen(false);
         setSelectedCellData(null);
     };
 
-    // --- Function passed to Modal to trigger data refresh (Unchanged) ---
+    // --- Function passed to Modal to trigger data refresh (Debug Log Added) ---
     const handleShiftUpdate = () => {
-        // This gets called by the modal after a successful save/delete
+        console.log('[ScheduleCalendar] handleShiftUpdate called (triggered by modal). Refreshing shifts.'); // DEBUG log
         fetchShiftData(); // Re-fetch shifts to show the update
     };
 
@@ -313,6 +331,9 @@ const ScheduleCalendar = ({ userRole }) => { // userRole prop is important for e
     let previousRoleGroup = null;
     const totalDataColumns = daysInMonth;
     const gridTemplateColumns = `minmax(150px, 15%) repeat(${totalDataColumns}, minmax(28px, 1fr))`;
+
+    // *** DEBUG: Log role before rendering grid ***
+    console.log(`[ScheduleCalendar] Rendering grid. User role for clickableClass: "${userRole}"`);
 
     return (
         <div className="schedule-calendar-container" style={{ position: 'relative' }}>
@@ -382,20 +403,20 @@ const ScheduleCalendar = ({ userRole }) => { // userRole prop is important for e
                                     const weekColorClass = `week-color-${weekParity}`;
                                     const isToday = formatDateKey(date) === todayDateStr;
                                     const todayClass = isToday ? 'today-highlight' : '';
-                                    // *** Add clickable class ONLY for supervisors ***
+                                    // *** Use the correctly derived userRole variable here ***
                                     const clickableClass = userRole === 'supervisor' ? 'clickable-cell' : '';
 
                                     return (
                                         <div
                                             key={`cell-group-${employee.id}-${index}`}
-                                            // *** Use clickableClass ***
+                                            // *** Apply clickableClass ***
                                             className={`grid-cell-group ${weekColorClass} ${todayClass} ${clickableClass}`}
                                             style={{
                                                 gridRow: `${shiftDataRow} / span ${ROWS_PER_EMPLOYEE}`, gridColumn: currentDataColumn,
                                                 display: 'flex', flexDirection: 'column', padding: 0,
                                                 borderRight: '1px solid #eee', borderBottom: '1px solid #eee'
                                             }}
-                                            // *** Click handler already checks role internally ***
+                                            // *** Attach click handler ***
                                             onClick={() => handleCellClick(employee, date, shift)}
                                             title={shift?.notes || (userRole === 'supervisor' ? `Assign shift for ${employee.name} on ${formatDateKey(date)}` : `${employee.name} - ${formatDateKey(date)}`)}
                                         >
@@ -414,16 +435,19 @@ const ScheduleCalendar = ({ userRole }) => { // userRole prop is important for e
             </div> {/* End schedule-calendar */}
 
             {/* Modal - Render logic unchanged, opening is controlled by role check */}
-            {isModalOpen && selectedCellData && userRole === 'supervisor' && (
-                <ShiftModal
-                    isOpen={isModalOpen}
-                    onClose={handleCloseModal}
-                    cellData={selectedCellData}
-                    onShiftUpdate={handleShiftUpdate}
-                    // Pass userRole if modal needs it for internal logic (e.g., delete button)
-                    // userRole={userRole}
-                />
-            )}
+             {/* *** DEBUG: Log modal render conditions *** */}
+             {console.log('[ScheduleCalendar] Checking modal render conditions:', { isModalOpen, selectedCellData, userRole })}
+             {/* The condition `userRole === 'supervisor'` here is redundant if handleCellClick already checked, but safe */}
+             {isModalOpen && selectedCellData && userRole === 'supervisor' && (
+                 <ShiftModal
+                     isOpen={isModalOpen}
+                     onClose={handleCloseModal}
+                     cellData={selectedCellData}
+                     onShiftUpdate={handleShiftUpdate}
+                     // Pass userRole if modal needs it for internal logic (e.g., delete button)
+                     // userRole={userRole} // Not currently needed by ShiftModal based on provided code
+                 />
+             )}
         </div> // End schedule-calendar-container
     );
 };

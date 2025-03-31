@@ -1,0 +1,57 @@
+/* frontend/src/components/Navbar.css */
+
+.main-navbar {
+    display: flex;
+    justify-content: space-between; /* Pushes links left, auth right */
+    align-items: center;
+    background-color: #333; /* Dark background */
+    padding: 10px 20px;
+    color: white;
+  }
+  
+  .main-navbar a,
+  .main-navbar .nav-brand { /* Style links and brand */
+    color: white;
+    text-decoration: none;
+    margin: 0 10px; /* Spacing between links */
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+  }
+  
+  .main-navbar a:hover,
+  .main-navbar .nav-brand:hover {
+    background-color: #555; /* Darker hover */
+  }
+  
+  .nav-links {
+    display: flex;
+    align-items: center;
+  }
+  
+  .nav-auth {
+    display: flex;
+    align-items: center;
+  }
+  
+  .user-greeting {
+    margin-right: 15px;
+    font-style: italic;
+  }
+  
+  .logout-button {
+    background-color: #dc3545; /* Red for logout */
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s ease;
+  }
+  
+  .logout-button:hover {
+    background-color: #c82333; /* Darker red on hover */
+  }
+  
+  /* Add more specific styles as needed */

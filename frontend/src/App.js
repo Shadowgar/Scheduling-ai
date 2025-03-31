@@ -1,128 +1,165 @@
 // frontend/src/App.js
-import React, { useState, useEffect } from 'react'; // Add useEffect
-import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom'; // Add useNavigate
+import React, { useState, useEffect, useCallback } from 'react';
+import { BrowserRouter as Router, Route, Routes, Navigate, useNavigate } from 'react-router-dom';
 import ScheduleCalendar from './components/ScheduleCalendar';
 import EmployeeManager from './components/EmployeeManager';
 import Login from './components/Login';
+import Navbar from './components/Navbar';
 import './App.css';
 
-// *** We will modify ProtectedRoute later to use real auth state ***
-// Keep it for now, but it won't work correctly until we add auth context/state
-const ProtectedRoute = ({ isAllowed, children }) => {
-  if (!isAllowed) {
-    // Redirect them to the /login page, but save the current location they were
-    // trying to go to when they were redirected. This allows us to send them
-    // along to that page after they login, which is a nicer user experience
-    // than dropping them off on the home page.
-    return <Navigate to="/login" replace />;
-  }
-  return children;
+// ProtectedRoute remains the same conceptually
+const ProtectedRoute = ({ isAllowed, children, redirectTo = "/login" }) => {
+    if (!isAllowed) {
+        return <Navigate to={redirectTo} replace />;
+    }
+    return children;
 };
 
-// --- Component for handling Logout ---
-// We place useNavigate outside the App component itself
-const LogoutButton = () => {
-    const navigate = useNavigate();
-    const handleLogout = () => {
-        localStorage.removeItem('accessToken'); // Clear the token
-        // Optionally clear user info if stored separately
-        // localStorage.removeItem('user');
-        navigate('/login'); // Redirect to login
-        // Force a reload might be needed if App state isn't reactive enough yet
-        window.location.reload(); // Consider removing this if using Context API later
-    };
-    return <button onClick={handleLogout} className="logout-button">Logout</button>;
-};
-
-
+// --- Main App Component ---
 function App() {
-  // --- Real Authentication State (Simplified using localStorage for now) ---
-  // We derive the initial state directly from localStorage
-  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('accessToken'));
-  // We'll add user info/role state later, perhaps fetched from a /api/auth/me endpoint or stored during login
+    const [currentUser, setCurrentUser] = useState(null);
+    const [isLoading, setIsLoading] = useState(true); // Still true initially
 
-  // This effect could run once on mount to verify the token or fetch user data
-  // For now, we just rely on the presence of the token
-  useEffect(() => {
-      const token = localStorage.getItem('accessToken');
-      setIsAuthenticated(!!token);
-      // TODO: Add logic here to verify token with backend (/api/auth/me)
-      // and fetch user details if token is valid. Update state accordingly.
-  }, []); // Runs once on component mount
+    const AppContent = () => {
+        const navigate = useNavigate();
+        console.log('AppContent rendering...'); // Keep this log for now
 
-  // Placeholder for user role - this needs to be fetched/set after login
-  // For now, let's assume 'supervisor' if logged in, otherwise null.
-  // THIS IS A TEMPORARY SIMPLIFICATION
-  const currentUserRole = isAuthenticated ? 'supervisor' : null; // TODO: Replace with actual role from user data
+        const handleLoginSuccess = useCallback((data) => {
+            console.log('App.js: handleLoginSuccess called with data:', data);
+            if (data && data.access_token && data.user) {
+                const tokenToStore = data.access_token;
+                // console.log('App.js: Token to store:', tokenToStore); // Can comment out
+                localStorage.setItem('accessToken', tokenToStore);
+                // console.log('App.js: Token stored in localStorage.'); // Can comment out
+                setCurrentUser(data.user); // Set user state
+                setIsLoading(false); // We have user data, no longer loading initial auth
+                console.log('App.js: User state set:', data.user);
+                console.log('App.js: Navigating to /schedule');
+                navigate('/schedule');
+            } else {
+                console.error('App.js: handleLoginSuccess received invalid data:', data);
+                setIsLoading(false); // Stop loading even if login data is bad
+            }
+        }, [navigate]);
 
-  return (
-    <Router>
-      <div className="App">
-        <header className="App-header">
-          <h1>Employee Scheduling</h1>
+        const handleLogout = useCallback(() => {
+            console.log('App.js: handleLogout called');
+            localStorage.removeItem('accessToken');
+            setCurrentUser(null); // Clear user state
+            setIsLoading(false); // No user, not loading initial auth
+            navigate('/login');
+        }, [navigate]);
 
-          {/* --- Navigation --- */}
-          <nav className="main-nav">
-            {isAuthenticated && <Link to="/schedule">Schedule</Link>}
-            {/* Show Manage Employees link only if authenticated and supervisor */}
-            {isAuthenticated && currentUserRole === 'supervisor' && (
-              <Link to="/admin/employees">Manage Employees</Link>
-            )}
-            {!isAuthenticated && <Link to="/Login">Login</Link>}
-            {isAuthenticated && <LogoutButton />} {/* Add Logout Button */}
-          </nav>
+        // --- Effect for Initial Authentication Check ---
+        useEffect(() => {
+            console.log('App.js: Auth check effect logic running...');
+            const token = localStorage.getItem('accessToken');
+            // console.log('App.js: Token retrieved from localStorage:', token); // Can comment out
 
-          {/* --- REMOVE Role Switcher --- */}
-          {/*
-          <div className="role-switcher">
-            <span>Simulate Role:</span>
-            <button onClick={() => setCurrentUserRole('supervisor')} disabled={currentUserRole === 'supervisor'} style={{ fontWeight: currentUserRole === 'supervisor' ? 'bold' : 'normal' }}> Supervisor </button>
-            <button onClick={() => setCurrentUserRole('employee')} disabled={currentUserRole === 'employee'} style={{ fontWeight: currentUserRole === 'employee' ? 'bold' : 'normal' }}> Employee </button>
-            <p> (Currently: <strong>{currentUserRole}</strong>) </p>
-          </div>
-          */}
-        </header>
+            // *** FIX: Only fetch if token exists AND we don't have a user yet ***
+            if (token && currentUser === null) {
+                console.log('App.js: Token found AND currentUser is null, fetching /api/auth/me');
+                const headers = { 'Authorization': `Bearer ${token}` };
+                // console.log('App.js: Fetching /api/auth/me with headers:', headers); // Can comment out
 
-        <main>
-          {/* --- Define Routes --- */}
-          <Routes>
-            {/* Login Route */}
-            <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/schedule" replace />} />
+                // Ensure loading is true before fetch
+                if (!isLoading) setIsLoading(true);
 
-            {/* Schedule Calendar Route (Protected) */}
-            <Route
-              path="/schedule"
-              element={
-                <ProtectedRoute isAllowed={isAuthenticated}>
-                  {/* Pass the role if ScheduleCalendar needs it */}
-                  <ScheduleCalendar userRole={currentUserRole} />
-                </ProtectedRoute>
-              }
-            />
+                fetch('/api/auth/me', { headers: headers })
+                .then(response => {
+                    // console.log('App.js: /api/auth/me response status:', response.status); // Can comment out
+                    if (response.ok) {
+                        return response.json();
+                    }
+                    // If token is invalid/expired, logout
+                    throw new Error(`Invalid or expired token (status: ${response.status})`);
+                })
+                .then(data => {
+                    if (data && data.user) {
+                        console.log('App.js: User data fetched successfully, setting state.');
+                        setCurrentUser(data.user); // Set user state
+                    } else {
+                         console.error('App.js: /api/auth/me response OK but no user data');
+                         handleLogout(); // Treat as invalid session
+                    }
+                })
+                .catch(error => {
+                    console.error('App.js: Error validating token or fetching user:', error.message);
+                    handleLogout(); // Clear invalid token and state
+                })
+                .finally(() => {
+                    console.log('App.js: Initial auth fetch finished.');
+                    setIsLoading(false); // Finished loading sequence
+                });
+            } else if (!token) {
+                 // No token found, ensure user is null and stop loading
+                 console.log('App.js: No token found, ensuring user is null.');
+                 if (currentUser !== null) setCurrentUser(null); // Clear user if somehow set
+                 if (isLoading) setIsLoading(false); // Stop loading
+            } else {
+                 // Token exists AND currentUser is already set, no need to fetch
+                 console.log('App.js: Token found and currentUser exists, skipping fetch.');
+                 // Ensure loading is false if we skipped fetch
+                 if (isLoading) setIsLoading(false);
+            }
+        // Dependencies:
+        // - handleLogout: Stable function.
+        // - currentUser: We need to re-run if the user logs out (currentUser becomes null).
+        // - isLoading: Might need to re-run if loading state changes externally (less likely here).
+        }, [handleLogout, currentUser, isLoading]);
 
-            {/* Employee Manager Route (Protected) */}
-            <Route
-              path="/admin/employees"
-              element={
-                <ProtectedRoute isAllowed={isAuthenticated && currentUserRole === 'supervisor'}>
-                  <EmployeeManager />
-                </ProtectedRoute>
-              }
-            />
 
-            {/* Default Route: Redirect based on auth status */}
-            <Route
-              path="/"
-              element={isAuthenticated ? <Navigate to="/schedule" replace /> : <Navigate to="/login" replace />}
-            />
+        // Show loading indicator *only* when isLoading is true
+        if (isLoading) {
+            return <div className="loading-container">Loading application...</div>;
+        }
 
-            {/* Optional: Catch-all or Not Found route */}
-            <Route path="*" element={<div>404 Not Found - Page does not exist</div>} />
-          </Routes>
-        </main>
-      </div>
-    </Router>
-  );
+        // --- Render Main Application UI ---
+        const isAuthenticated = !!currentUser;
+        const userRole = currentUser?.role; // Get role safely
+
+        return (
+            <div className="App">
+                <Navbar currentUser={currentUser} onLogout={handleLogout} />
+                <header className="App-header">
+                    <h1>Employee Scheduling</h1>
+                </header>
+                <main>
+                    <Routes>
+                        <Route
+                            path="/login"
+                            element={!isAuthenticated ? <Login onLoginSuccess={handleLoginSuccess} /> : <Navigate to="/schedule" replace />}
+                        />
+                        <Route
+                            path="/schedule"
+                            // Pass currentUser itself if ScheduleCalendar needs more than just the role
+                            element={<ScheduleCalendar currentUser={currentUser} />}
+                        />
+                        <Route
+                            path="/admin/employees"
+                            element={
+                                <ProtectedRoute isAllowed={isAuthenticated && userRole === 'supervisor'} redirectTo="/schedule">
+                                    {/* Pass relevant props if EmployeeManager needs them */}
+                                    <EmployeeManager />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/"
+                            element={<Navigate to={isAuthenticated ? "/schedule" : "/login"} replace />}
+                        />
+                        <Route path="*" element={<div style={{ padding: '20px' }}><h2>404 Not Found</h2><p>Page does not exist.</p></div>} />
+                    </Routes>
+                </main>
+            </div>
+        );
+    };
+
+    return (
+        <Router>
+            <AppContent />
+        </Router>
+    );
 }
 
 export default App;

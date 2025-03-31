@@ -25,3 +25,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 /backend/migrations
+backend/__pycache__/app.cpython-313.pyc
+backend/migrations/__pycache__/env.cpython-313.pyc
+backend/migrations/versions/__pycache__/d5da9874c379_add_auth_fields_handle_existing_nulls_.cpython-313.pyc
+backend/migrations/versions/__pycache__/e3472b84c49a_add_shifts_table.cpython-313.pyc
+backend/migrations/versions/__pycache__/fe2dd46da2cf_initial_migration_create_employees_table.cpython-313.pyc

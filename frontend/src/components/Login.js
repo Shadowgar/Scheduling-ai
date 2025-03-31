@@ -1,62 +1,85 @@
 // frontend/src/components/Login.js
-import React, { useState, /* useContext */ } from 'react'; // Add useContext later if using AuthContext
-import { useNavigate } from 'react-router-dom';
-// import { AuthContext } from '../context/AuthContext'; // Example: Uncomment when AuthContext is ready
+import React, { useState } from 'react';
+// No navigate needed here anymore, App.js handles it
 
-function Login() {
+// Accept onLoginSuccess prop from App.js
+function Login({ onLoginSuccess }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
-    const navigate = useNavigate();
-    // const { login } = useContext(AuthContext); // Example: Uncomment when AuthContext is ready
 
     const handleSubmit = async (event) => {
-        event.preventDefault(); // Prevent default page reload
-        setError(null); // Clear previous errors
+        event.preventDefault();
+        setError(null);
         setIsLoading(true);
+        console.log('Login.js: handleSubmit triggered. Email:', email); // <<< DEBUG LOG
 
         try {
-            const response = await fetch('/api/auth/login', { // Using fetch API
+            console.log('Login.js: Attempting fetch to /api/auth/login'); // <<< DEBUG LOG
+            const response = await fetch('/api/auth/login', { // Using relative URL for proxy
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ email, password }), // Send email and password
+                body: JSON.stringify({ email, password }),
             });
 
-            const data = await response.json(); // Parse the JSON response body
+            console.log('Login.js: Fetch response status:', response.status); // <<< DEBUG LOG
+            // It's generally safer to attempt parsing JSON even on failure,
+            // as the body might contain a structured error message.
+            let data;
+            try {
+                data = await response.json(); // Parse JSON response
+                console.log('Login.js: Fetch response data:', data); // <<< DEBUG LOG
+            } catch (jsonError) {
+                // Handle cases where response is not JSON (e.g., HTML error page from proxy/server)
+                console.error('Login.js: Failed to parse JSON response:', jsonError); // <<< DEBUG LOG
+                const textResponse = await response.text(); // Get raw text instead
+                console.error('Login.js: Raw text response:', textResponse); // <<< DEBUG LOG
+                setError(`Server returned non-JSON response (Status: ${response.status}). Check network tab.`);
+                setIsLoading(false);
+                return; // Stop execution here
+            }
+
 
             if (response.ok) {
                 // --- SUCCESS ---
-                console.log('Login successful:', data);
-
-                // 1. Store the token (localStorage is simple, Context is better for reactivity)
-                localStorage.setItem('accessToken', data.access_token);
-
-                // 2. Store user info (Optional here, better handled by Context/global state)
-                // localStorage.setItem('user', JSON.stringify(data.user)); // Less ideal than Context
-
-                // 3. Update global state (Example using a hypothetical AuthContext)
-                // login(data.access_token, data.user); // Call context login function
-
-                // 4. Redirect to the main schedule page (or dashboard)
-                navigate('/schedule'); // Assuming '/schedule' is your main app route after login
+                console.log('Login.js: Login successful. Raw response data:', data); // <<< DEBUG LOG
+                // *** ADD DETAILED LOGGING HERE ***
+                if (data && data.access_token) {
+                    const receivedToken = data.access_token;
+                    console.log('Login.js: Received access_token:', receivedToken); // <<< DEBUG LOG
+                    console.log('Login.js: Calling onLoginSuccess callback.'); // <<< DEBUG LOG
+                     if (typeof onLoginSuccess === 'function') {
+                        onLoginSuccess(data); // Pass the full data object up
+                    } else {
+                        console.error("Login.js: onLoginSuccess prop is not a function!"); // <<< DEBUG LOG
+                        setError("Login callback configuration error."); // Show error to user
+                    }
+                } else {
+                    console.error('Login.js: Login response OK, but missing access_token in data:', data); // <<< DEBUG LOG
+                    setError('Login succeeded but received invalid data from server.');
+                }
+                // *** REMOVE localStorage.setItem and navigate calls from here ***
 
             } else {
                 // --- FAILURE ---
-                setError(data.message || 'Login failed. Please check your credentials.');
-                console.error('Login failed:', data);
+                console.error('Login.js: Login failed. Status:', response.status, 'Error from server:', data?.error || data?.message || 'Unknown server error'); // <<< DEBUG LOG
+                setError(data?.error || data?.message || 'Login failed. Please check credentials.'); // Use backend error message safely
             }
         } catch (err) {
             // --- NETWORK OR OTHER ERRORS ---
-            console.error('Login request failed:', err);
-            setError('An error occurred during login. Please try again later.');
+            // This catches fetch failures (network down, DNS issues, CORS if proxy fails)
+            console.error('Login.js: Login request failed (network error):', err); // <<< DEBUG LOG
+            setError('Could not connect to the server. Please try again later.');
         } finally {
-            setIsLoading(false); // Stop loading indicator
+            console.log('Login.js: Setting isLoading to false.'); // <<< DEBUG LOG
+            setIsLoading(false);
         }
     };
 
+    // --- JSX remains the same ---
     return (
         <div className="login-container" style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
             <h2>Login</h2>
@@ -69,6 +92,7 @@ function Login() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
+                        autoComplete="email"
                         style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                     />
                 </div>
@@ -80,6 +104,7 @@ function Login() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
+                        autoComplete="current-password"
                         style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                     />
                 </div>
