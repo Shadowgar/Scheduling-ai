@@ -1,263 +1,338 @@
 // frontend/src/components/ShiftModal.js
-import React, { useState, useEffect, useMemo } from 'react';
-import './ShiftModal.css';
-
-// Helper functions (formatModalDate, formatDateTimeLocal, formatISOForBackend) remain the same...
-// Helper to format date for display in modal title
-const formatModalDate = (date) => {
-    if (!(date instanceof Date) || isNaN(date)) return "Invalid Date";
-    return date.toLocaleDateString('en-US', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-    });
-};
-
-// Helper to format Date object to YYYY-MM-DDTHH:MM required by datetime-local input
-const formatDateTimeLocal = (date) => {
-    if (!(date instanceof Date) || isNaN(date)) return '';
-    // Simple conversion, assumes user's local time is intended
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-};
-
-
-// Helper to format date/time string from input to ISO 8601 for backend
-const formatISOForBackend = (dateTimeLocalString) => {
-    if (!dateTimeLocalString) return null;
-    try {
-        // Directly creating a Date from datetime-local string assumes local timezone
-        // Sending as ISO string will include timezone offset or Z (UTC)
-        const date = new Date(dateTimeLocalString);
-        if (isNaN(date)) return null;
-        return date.toISOString(); // Send in UTC format
-    } catch (e) {
-        console.error("Error parsing date input:", e);
-        return null;
-    }
-};
-
+import React, { useState, useEffect } from 'react';
+import './ShiftModal.css'; // Ensure you have styles for the modal
 
 const ShiftModal = ({ isOpen, onClose, cellData, onShiftUpdate }) => {
-    const [modalError, setModalError] = useState(null);
+    // State for form fields
+    const [employeeId, setEmployeeId] = useState('');
+    const [startTime, setStartTime] = useState('');
+    const [endTime, setEndTime] = useState('');
+    const [notes, setNotes] = useState('');
+    // *** ADD STATE FOR NEW FIELD ***
+    const [cellText, setCellText] = useState('');
+
+    // State for component logic
+    const [error, setError] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
-    const { employeeId, employeeName, date, shift } = cellData || {};
+    const [employeesList, setEmployeesList] = useState([]); // To populate dropdown
 
-    // Calculate default values using useMemo
-    const defaultStartTime = useMemo(() => {
-        const baseDate = (date instanceof Date && !isNaN(date)) ? new Date(date) : new Date();
-        // If shift exists, use its start time, otherwise default to 7 AM of the cell's date
-        return shift?.start_time ? formatDateTimeLocal(new Date(shift.start_time))
-               : formatDateTimeLocal(new Date(baseDate.setHours(7, 0, 0, 0)));
-    }, [date, shift?.start_time]);
+    // Determine if editing an existing shift
+    const isEditMode = !!cellData?.shift?.id;
 
-    const defaultEndTime = useMemo(() => {
-         const baseDate = (date instanceof Date && !isNaN(date)) ? new Date(date) : new Date();
-         // If shift exists, use its end time, otherwise default to 3 PM (15:00) of the cell's date
-         return shift?.end_time ? formatDateTimeLocal(new Date(shift.end_time))
-              : formatDateTimeLocal(new Date(baseDate.setHours(15, 0, 0, 0)));
-    }, [date, shift?.end_time]);
-
-    const defaultNotes = useMemo(() => shift?.notes || '', [shift?.notes]);
-
-    // Effect to clear error when modal opens or cellData changes
+    // Fetch employees for dropdown when modal opens
     useEffect(() => {
+        const fetchEmployees = async () => {
+            const token = localStorage.getItem('accessToken');
+            // Prevent fetching if no token
+            if (!token) {
+                setError("Authentication required to load employees.");
+                setEmployeesList([]);
+                return;
+            }
+            try {
+                // Use admin endpoint to get all employees suitable for assignment
+                const response = await fetch('/api/admin/employees', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error('Authorization failed fetching employees.');
+                }
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch employees (${response.status})`);
+                }
+                const data = await response.json();
+                setEmployeesList(data.sort((a, b) => a.name.localeCompare(b.name)));
+                setError(null); // Clear previous errors on success
+            } catch (err) {
+                console.error("Error loading employees:", err);
+                setError(`Error loading employees: ${err.message}`);
+                setEmployeesList([]); // Set empty on error
+            }
+        };
         if (isOpen) {
-            setModalError(null);
+            fetchEmployees();
+        }
+    }, [isOpen]); // Dependency: only run when isOpen changes
+
+
+    // Populate form when cellData changes (modal opens or cell selection changes)
+    useEffect(() => {
+        if (isOpen && cellData) {
+            const shift = cellData.shift;
+            const date = cellData.date; // Get the date from cellData
+
+            // Set default times based on the clicked date if creating new shift
+            const defaultStart = new Date(date);
+            defaultStart.setHours(8, 0, 0, 0); // Default 8 AM
+            const defaultEnd = new Date(date);
+            defaultEnd.setHours(16, 0, 0, 0); // Default 4 PM
+
+            // Format date/time for input[type=datetime-local] (needs YYYY-MM-DDTHH:mm)
+            const formatDateTimeLocal = (d) => {
+                if (!d) return '';
+                try {
+                    const dateObj = new Date(d);
+                    // Adjust for timezone offset to display correctly in local time input
+                    // This ensures the time shown matches the user's local timezone interpretation of the UTC time
+                    dateObj.setMinutes(dateObj.getMinutes() - dateObj.getTimezoneOffset());
+                    return dateObj.toISOString().slice(0, 16);
+                } catch (e) {
+                    console.error("Error formatting date for input:", e);
+                    return ''; // Return empty string on error
+                }
+            };
+
+            setEmployeeId(shift?.employee_id || cellData.employeeId || ''); // Prefer existing shift emp, fallback to cell emp
+            setStartTime(formatDateTimeLocal(shift?.start_time || defaultStart));
+            setEndTime(formatDateTimeLocal(shift?.end_time || defaultEnd));
+            setNotes(shift?.notes || '');
+            // *** SET NEW FIELD STATE ***
+            setCellText(shift?.cell_text || ''); // Populate from existing shift or default empty
+
+            setError(null); // Clear previous errors when opening/re-opening
+            setIsSaving(false); // Reset saving state
+
+        } else {
+            // Reset form if modal is closed or no cellData
+            setEmployeeId('');
+            setStartTime('');
+            setEndTime('');
+            setNotes('');
+            setCellText(''); // Reset new field
+            setError(null);
             setIsSaving(false);
         }
-    }, [isOpen, cellData]);
+    }, [isOpen, cellData]); // Dependencies: run when modal opens or cell data changes
 
-
-    if (!isOpen || !cellData) {
-        return null;
-    }
-
-    // --- Handle Save/Update ---
+    // --- Handle Form Submission (Save/Update) ---
     const handleSave = async (e) => {
         e.preventDefault();
-        setModalError(null);
+        setError(null); // Clear previous errors
         setIsSaving(true);
-
-        // *** FIX: Get Token ***
         const token = localStorage.getItem('accessToken');
+
         if (!token) {
-            setModalError("Authentication token not found. Please log in again.");
+            setError("Authentication required to save.");
             setIsSaving(false);
             return;
         }
 
-        const form = e.target;
-        const startTimeLocal = form.elements['start_time'].value;
-        const endTimeLocal = form.elements['end_time'].value;
-        const notes = form.elements['notes'].value;
-
-        if (!startTimeLocal || !endTimeLocal) {
-            setModalError("Start and End times are required.");
-            setIsSaving(false); return;
-        }
-        const startTimeISO = formatISOForBackend(startTimeLocal);
-        const endTimeISO = formatISOForBackend(endTimeLocal);
-
-        if (!startTimeISO || !endTimeISO) {
-             setModalError("Invalid date format entered. Please use the date picker.");
-             setIsSaving(false); return;
-        }
-        if (new Date(endTimeISO) <= new Date(startTimeISO)) { // Compare Date objects
-             setModalError("End time must be after start time.");
-             setIsSaving(false); return;
+        // Basic validation
+        if (!employeeId) { setError("Please select an employee."); setIsSaving(false); return; }
+        if (!startTime || !endTime) { setError("Start and End times are required."); setIsSaving(false); return; }
+        try {
+            if (new Date(endTime) <= new Date(startTime)) {
+                 setError("End time must be after start time."); setIsSaving(false); return;
+            }
+        } catch (dateError) {
+             setError("Invalid start or end time format."); setIsSaving(false); return;
         }
 
-        const payload = { employee_id: employeeId, start_time: startTimeISO, end_time: endTimeISO, notes: notes };
-        const isUpdate = shift?.id;
-        // *** FIX: Use Relative URL ***
-        const url = isUpdate ? `/api/shifts/${shift.id}` : '/api/shifts';
-        const method = isUpdate ? 'PUT' : 'POST';
 
-        console.log(`Saving shift. Method: ${method}, URL: ${url}, Payload:`, payload); // Log before fetch
+        // Prepare payload for API
+        const shiftPayload = {
+            employee_id: parseInt(employeeId, 10),
+            // Convert local datetime-local string back to ISO 8601 UTC string for backend
+            start_time: new Date(startTime).toISOString(),
+            end_time: new Date(endTime).toISOString(),
+            notes: notes, // Send notes content
+            // *** INCLUDE NEW FIELD IN PAYLOAD ***
+            cell_text: cellText || null, // Send the cellText state, or null if empty
+        };
+
+        const url = isEditMode ? `/api/shifts/${cellData.shift.id}` : '/api/shifts';
+        const method = isEditMode ? 'PUT' : 'POST';
+
+        console.log(`Saving shift (${method} to ${url}) Payload:`, shiftPayload);
 
         try {
             const response = await fetch(url, {
                 method: method,
                 headers: {
                     'Content-Type': 'application/json',
-                    // *** FIX: Add Authorization Header ***
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(payload),
+                body: JSON.stringify(shiftPayload)
             });
 
-            // Enhanced error handling remains the same
+            const result = await response.json();
             if (!response.ok) {
-                let errorMsg = `Error: ${response.status} ${response.statusText}`;
-                try {
-                    const errorJson = await response.json();
-                    errorMsg = errorJson.error || JSON.stringify(errorJson);
-                } catch (parseError) {
-                    console.warn("Could not parse error response as JSON:", parseError);
-                }
-                throw new Error(errorMsg);
+                // Use error message from backend if available
+                throw new Error(result.error || `Failed to ${isEditMode ? 'update' : 'create'} shift (${response.status})`);
             }
 
-            console.log("Shift saved successfully."); // Log success
-            onShiftUpdate(); // Refresh data in parent
-            onClose(); // Close modal
+            console.log(`Shift ${isEditMode ? 'updated' : 'created'} successfully:`, result);
+            onShiftUpdate(); // Trigger refresh in parent component (ScheduleCalendar)
+            onClose(); // Close modal on success
 
-        } catch (error) {
-            console.error(`Error ${isUpdate ? 'updating' : 'creating'} shift:`, error);
-            setModalError(`Failed to save shift: ${error.message}`);
+        } catch (err) {
+            console.error(`Error saving shift:`, err);
+            setError(err.message); // Display error message in the modal
         } finally {
-             setIsSaving(false);
+            setIsSaving(false); // Re-enable buttons
         }
     };
 
-    // --- Handle Delete ---
+    // --- Handle Shift Deletion ---
     const handleDelete = async () => {
-        if (!shift?.id) { setModalError("Cannot delete unsaved shift."); return; }
+         if (!isEditMode) return; // Should not happen, but safeguard
 
-        // *** FIX: Get Token ***
-        const token = localStorage.getItem('accessToken');
-        if (!token) {
-            setModalError("Authentication token not found. Please log in again.");
-            return;
-        }
+         // Confirmation dialog
+         if (window.confirm("Are you sure you want to delete this shift? This action cannot be undone.")) {
+             setError(null);
+             setIsSaving(true); // Use saving state to disable buttons during delete
+             const token = localStorage.getItem('accessToken');
+             if (!token) { setError("Authentication required."); setIsSaving(false); return; }
 
-        const displayDate = (date instanceof Date && !isNaN(date)) ? date : new Date();
-        if (window.confirm(`Are you sure you want to delete the shift for ${employeeName} on ${formatModalDate(displayDate)}?`)) {
-            setModalError(null);
-            setIsSaving(true);
-            // *** FIX: Use Relative URL ***
-            const url = `/api/shifts/${shift.id}`;
+             const url = `/api/shifts/${cellData.shift.id}`;
+             console.log(`Deleting shift: ${url}`);
 
-            console.log(`Deleting shift. URL: ${url}`); // Log before fetch
+             try {
+                 const response = await fetch(url, {
+                     method: 'DELETE',
+                     headers: { 'Authorization': `Bearer ${token}` }
+                 });
 
-            try {
-                const response = await fetch(url, {
-                    method: 'DELETE',
-                    // *** FIX: Add Authorization Header ***
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                // Enhanced error handling remains the same
-                if (!response.ok && response.status !== 204) {
-                     let errorMsg = `Error: ${response.status} ${response.statusText}`;
-                     try {
-                         const errorJson = await response.json();
-                         errorMsg = errorJson.error || JSON.stringify(errorJson);
-                     } catch (parseError) {
-                         console.warn("Could not parse error response as JSON:", parseError);
-                     }
-                     throw new Error(errorMsg);
-                }
-
-                console.log("Shift deleted successfully."); // Log success
-                onShiftUpdate(); // Refresh data in parent
-                onClose(); // Close modal
-
-            } catch (error) {
-                 console.error("Error deleting shift:", error);
-                 setModalError(`Failed to delete shift: ${error.message}`);
-            } finally {
-                 setIsSaving(false);
-            }
-        }
+                 // Check for successful deletion (200 OK or 204 No Content)
+                 if (response.status === 204 || response.ok) {
+                     console.log(`Shift deleted successfully.`);
+                     onShiftUpdate(); // Trigger refresh in parent
+                     onClose(); // Close modal
+                 } else {
+                      // Try to parse error message from backend
+                      const result = await response.json().catch(() => ({}));
+                      throw new Error(result.error || `Failed to delete shift (${response.status})`);
+                 }
+             } catch (err) {
+                  console.error(`Error deleting shift:`, err);
+                  setError(err.message); // Show error in modal
+             } finally {
+                 setIsSaving(false); // Re-enable buttons
+             }
+         }
     };
 
-    // --- Render ---
-    // JSX remains largely the same, ensure defaultValues are used correctly
+
+    // Render nothing if modal is not open
+    if (!isOpen) return null;
+
+    // Render the modal structure
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h2>{shift ? 'Edit' : 'Create'} Shift</h2>
-                    <button onClick={onClose} className="close-button" disabled={isSaving}>&times;</button>
-                </div>
+        <div className="modal-overlay">
+            <div className="modal-content">
+                {/* Close button */}
+                <button className="modal-close-button" onClick={onClose} disabled={isSaving}>×</button>
 
-                <div className="modal-body">
-                    {employeeName && date && (
-                        <>
-                            <p><strong>Employee:</strong> {employeeName}</p>
-                            <p><strong>Date:</strong> {formatModalDate(date)}</p>
-                        </>
-                    )}
+                {/* Title */}
+                <h3>{isEditMode ? 'Edit Shift' : 'Add Shift'}</h3>
 
-                    {modalError && <div className="modal-error error-message">{modalError}</div>} {/* Added error-message class */}
+                {/* Context Info */}
+                <p className="modal-context">
+                    For: <strong>{cellData?.employeeName || 'Unknown Employee'}</strong> <br/>
+                    Date: <strong>{cellData?.date ? new Date(cellData.date).toLocaleDateString() : 'Unknown Date'}</strong>
+                </p>
 
-                    {/* Key prop forces re-render and use of new defaultValues when cellData changes */}
-                    <form key={shift?.id || `${employeeId}-${date?.toISOString()}`} onSubmit={handleSave}>
-                        <div className="form-group">
-                            <label htmlFor="start-time">Start Time:</label>
-                            {/* Use defaultValue for uncontrolled input tied to key re-render */}
-                            <input type="datetime-local" id="start-time" name="start_time" defaultValue={defaultStartTime} required disabled={isSaving} />
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="end-time">End Time:</label>
-                            <input type="datetime-local" id="end-time" name="end_time" defaultValue={defaultEndTime} required disabled={isSaving} />
-                        </div>
-                         <div className="form-group">
-                            <label htmlFor="notes">Notes:</label>
-                            <textarea id="notes" name="notes" defaultValue={defaultNotes} rows="3" disabled={isSaving}></textarea>
-                        </div>
+                {/* Error Display */}
+                {error && <p className="modal-error">Error: {error}</p>}
 
-                        <div className="modal-actions">
-                             <button type="submit" className="save-button" disabled={isSaving}>
-                                {isSaving ? 'Saving...' : (shift ? 'Update Shift' : 'Create Shift')}
+                {/* Form */}
+                <form onSubmit={handleSave}>
+                    {/* Employee Select */}
+                    <div className="form-group">
+                        <label htmlFor="employeeId">Employee:</label>
+                        <select
+                            id="employeeId"
+                            value={employeeId}
+                            onChange={(e) => setEmployeeId(e.target.value)}
+                            required
+                            disabled={isSaving || employeesList.length === 0} // Disable if saving or no employees loaded
+                        >
+                            <option value="" disabled>Select Employee</option>
+                            {/* Populate dropdown */}
+                            {employeesList.map(emp => (
+                                <option key={emp.id} value={emp.id}>{emp.name}</option>
+                            ))}
+                             {employeesList.length === 0 && !error && <option disabled>Loading employees...</option>}
+                             {employeesList.length === 0 && error && <option disabled>Could not load employees</option>}
+                        </select>
+                    </div>
+
+                    {/* Start Time */}
+                    <div className="form-group">
+                        <label htmlFor="startTime">Start Time:</label>
+                        <input
+                            type="datetime-local"
+                            id="startTime"
+                            value={startTime}
+                            onChange={(e) => setStartTime(e.target.value)}
+                            required
+                            disabled={isSaving}
+                        />
+                    </div>
+
+                    {/* End Time */}
+                    <div className="form-group">
+                        <label htmlFor="endTime">End Time:</label>
+                        <input
+                            type="datetime-local"
+                            id="endTime"
+                            value={endTime}
+                            onChange={(e) => setEndTime(e.target.value)}
+                            required
+                            disabled={isSaving}
+                        />
+                    </div>
+
+                     {/* *** NEW INPUT FIELD FOR CELL TEXT *** */}
+                    <div className="form-group">
+                        <label htmlFor="cellText">Cell Display Text (Optional):</label>
+                        <input
+                            type="text"
+                            id="cellText"
+                            value={cellText}
+                            onChange={(e) => setCellText(e.target.value)}
+                            maxLength="20" // Match DB length limit
+                            placeholder="e.g., TRNG, RCall, 1st"
+                            disabled={isSaving}
+                        />
+                        <small>Short text shown directly on the calendar grid (max 20 chars).</small>
+                    </div>
+
+                    {/* Notes Textarea */}
+                    <div className="form-group">
+                        <label htmlFor="notes">Notes (Optional):</label>
+                        <textarea
+                            id="notes"
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            rows="3"
+                            placeholder="Longer details (triggers corner mark)"
+                            disabled={isSaving}
+                        />
+                         <small>Presence indicated by a corner mark on the calendar.</small>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="modal-actions">
+                        <button type="submit" className="save-button" disabled={isSaving}>
+                            {isSaving ? 'Saving...' : (isEditMode ? 'Update Shift' : 'Save Shift')}
+                        </button>
+                        {/* Show delete button only in edit mode */}
+                        {isEditMode && (
+                            <button
+                                type="button"
+                                className="delete-button"
+                                onClick={handleDelete}
+                                disabled={isSaving}
+                            >
+                                {isSaving ? 'Deleting...' : 'Delete Shift'}
                             </button>
-                            {shift?.id && (
-                                <button type="button" onClick={handleDelete} className="delete-button" disabled={isSaving}>
-                                    {isSaving ? 'Deleting...' : 'Delete Shift'}
-                                </button>
-                            )}
-                             <button type="button" onClick={onClose} className="cancel-button" disabled={isSaving}>
-                                Cancel
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                        )}
+                        <button type="button" className="cancel-button" onClick={onClose} disabled={isSaving}>
+                            Cancel
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     );

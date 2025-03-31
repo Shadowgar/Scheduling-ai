@@ -1,35 +1,56 @@
-// frontend/src/components/Navbar.js
 import React from 'react';
 import { Link } from 'react-router-dom';
-import './Navbar.css'; // Create this file for styling
+// Assuming Navbar.css is imported somewhere, or import it here if needed:
+import './Navbar.css';
 
-function Navbar({ currentUser, onLogout }) {
-    const isAuthenticated = !!currentUser;
-    const isSupervisor = currentUser?.role === 'supervisor';
+const Navbar = ({ currentUser, onLogout }) => {
+    // Check access_role against lowercase 'supervisor'
+    const isAdmin = currentUser && currentUser.access_role === 'supervisor';
+    const isLoggedIn = !!currentUser;
+
+    // Log for debugging (optional)
+    // console.log('[Navbar] Rendering. currentUser:', currentUser, 'isAdmin:', isAdmin);
 
     return (
+        // Use class names from Navbar.css
         <nav className="main-navbar">
-            <div className="nav-links">
-                {/* Always show App Name/Home Link */}
-                 <Link to={isAuthenticated ? "/schedule" : "/login"} className="nav-brand">Scheduler</Link>
 
-                {isAuthenticated && <Link to="/schedule">Schedule</Link>}
-                {isSupervisor && (
-                    <Link to="/admin/employees">Manage Employees</Link>
-                )}
-                {/* Add other links as needed */}
-            </div>
-            <div className="nav-auth">
-                {!isAuthenticated && <Link to="/login">Login</Link>}
-                {isAuthenticated && (
+            {/* Left side: Brand and Links */}
+            <div className="nav-links">
+                <div className="nav-brand">
+                    <Link to="/">Schedule App</Link>
+                </div>
+                {isLoggedIn && (
                     <>
-                        <span className="user-greeting">Welcome, {currentUser.name}!</span>
-                        <button onClick={onLogout} className="logout-button">Logout</button>
+                        {/* Use appropriate class for styling links */}
+                        <Link to="/schedule" className="navbar-item">Schedule</Link>
+                        {isAdmin && (
+                            <Link to="/admin/employees" className="navbar-item">Manage Employees</Link>
+                        )}
                     </>
+                )}
+            </div>
+
+            {/* Right side: Auth info/buttons */}
+            <div className="nav-auth">
+                {isLoggedIn ? (
+                    <>
+                        <span className="user-greeting">
+                            Hello, {currentUser.name} ({currentUser.job_title || 'N/A'})
+                        </span>
+                        <button onClick={onLogout} className="logout-button">
+                            Logout
+                        </button>
+                    </>
+                ) : (
+                    // Ensure login-button class exists in CSS or style the Link appropriately
+                    <Link to="/login" className="login-button">
+                        Login
+                    </Link>
                 )}
             </div>
         </nav>
     );
-}
+};
 
 export default Navbar;
