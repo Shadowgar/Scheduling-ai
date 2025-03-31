@@ -117,90 +117,95 @@ const ScheduleCalendar = ({ userRole }) => { // userRole prop is important for e
         // Loading state is handled in the useEffect that calls this
     }, [currentDate, error]); // Include error to allow clearing
 
+    // --- Fetch Initial Data (Moved out of useEffect) ---
+    const fetchInitialData = useCallback(async () => {
+        setLoading(true);
+        setError(null);
 
-    // --- Initial Data Fetch Effect (Employees + Shifts) ---
+        // *** Get token (if available) ***
+        const token = localStorage.getItem('accessToken');
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        // *** Add Authorization header ONLY if token exists ***
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+            console.log('Fetching employees WITH token.');
+        } else {
+            console.log('Fetching employees WITHOUT token (anonymous view).');
+        }
+
+        try {
+            // *** USE RELATIVE URL FOR PROXY ***
+            const employeesApiUrl = '/api/employees';
+
+            // *** Use updated headers in fetch ***
+            const empPromise = fetch(employeesApiUrl, {
+                method: 'GET',
+                headers: headers // Pass constructed headers
+            });
+
+            // Start fetching shifts concurrently (it handles its own token logic)
+            const shiftPromise = fetchShiftData();
+
+            const empResponse = await empPromise;
+
+            if (!empResponse.ok) {
+                let errorDetails = `Network response for employees was not ok (${empResponse.status})`;
+                try {
+                    const errorJson = await empResponse.json();
+                    errorDetails += `: ${errorJson.error || errorJson.message || JSON.stringify(errorJson)}`;
+                } catch (parseError) { /* Ignore */ }
+                if (empResponse.status === 401 && !token) {
+                    console.warn("Employees fetch received 401 without a token - Backend might require login even for viewing.");
+                    setError("Login may be required to view employee list.");
+                } else {
+                    throw new Error(errorDetails);
+                }
+                setEmployees([]); // Clear employees on error
+            } else {
+                const empData = await empResponse.json();
+                // Employee sorting logic (unchanged)
+                const sortedEmployees = empData.sort((a, b) => {
+                    const roleA = a.role?.toLowerCase() || 'zzzz';
+                    const roleB = b.role?.toLowerCase() || 'zzzz';
+                    const indexA = roleOrder.findIndex(role => roleA.includes(role));
+                    const indexB = roleOrder.findIndex(role => roleB.includes(role));
+                    const effectiveIndexA = indexA === -1 ? roleOrder.length : indexA;
+                    const effectiveIndexB = indexB === -1 ? roleOrder.length : indexB;
+                    if (effectiveIndexA !== effectiveIndexB) return effectiveIndexA - effectiveIndexB;
+                    return a.name.localeCompare(b.name);
+                });
+                setEmployees(sortedEmployees);
+            }
+
+            await shiftPromise; // Wait for shifts to finish loading/processing
+
+        } catch (initialError) {
+            console.error("Error fetching initial data:", initialError);
+            // Avoid overwriting more specific errors from fetch logic if already set
+            if (!error) setError(`Failed to load initial data: ${initialError.message}.`);
+        } finally {
+            setLoading(false);
+        }
+    }, [fetchShiftData, error]); // Dependency on the memoized fetch function and error state
+
+    // --- Initial Data Fetch Effect (now uses the defined fetchInitialData) ---
     useEffect(() => {
         let isMounted = true;
-        const fetchInitialData = async () => {
-            setLoading(true);
-            setError(null);
-
-            // *** Get token (if available) ***
-            const token = localStorage.getItem('accessToken');
-            const headers = {
-                'Content-Type': 'application/json',
-            };
-            // *** Add Authorization header ONLY if token exists ***
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-                console.log('Fetching employees WITH token.');
-            } else {
-                console.log('Fetching employees WITHOUT token (anonymous view).');
-            }
-
-            try {
-                // *** USE RELATIVE URL FOR PROXY ***
-                const employeesApiUrl = '/api/employees';
-
-                // *** Use updated headers in fetch ***
-                const empPromise = fetch(employeesApiUrl, {
-                    method: 'GET',
-                    headers: headers // Pass constructed headers
-                });
-
-                // Start fetching shifts concurrently (it handles its own token logic)
-                const shiftPromise = fetchShiftData();
-
-                const empResponse = await empPromise;
-                if (!isMounted) return;
-
-                if (!empResponse.ok) {
-                     let errorDetails = `Network response for employees was not ok (${empResponse.status})`;
-                     try {
-                         const errorJson = await empResponse.json();
-                         errorDetails += `: ${errorJson.error || errorJson.message || JSON.stringify(errorJson)}`;
-                     } catch (parseError) { /* Ignore */ }
-                     if (empResponse.status === 401 && !token) {
-                         console.warn("Employees fetch received 401 without a token - Backend might require login even for viewing.");
-                         setError("Login may be required to view employee list.");
-                     } else {
-                        throw new Error(errorDetails);
-                     }
-                     setEmployees([]); // Clear employees on error
-                } else {
-                    const empData = await empResponse.json();
-                    // Employee sorting logic (unchanged)
-                    const sortedEmployees = empData.sort((a, b) => {
-                        const roleA = a.role?.toLowerCase() || 'zzzz';
-                        const roleB = b.role?.toLowerCase() || 'zzzz';
-                        const indexA = roleOrder.findIndex(role => roleA.includes(role));
-                        const indexB = roleOrder.findIndex(role => roleB.includes(role));
-                        const effectiveIndexA = indexA === -1 ? roleOrder.length : indexA;
-                        const effectiveIndexB = indexB === -1 ? roleOrder.length : indexB;
-                        if (effectiveIndexA !== effectiveIndexB) return effectiveIndexA - effectiveIndexB;
-                        return a.name.localeCompare(b.name);
-                    });
-                    setEmployees(sortedEmployees);
-                }
-
-                await shiftPromise; // Wait for shifts to finish loading/processing
-                if (!isMounted) return;
-
-            } catch (initialError) {
-                 if (isMounted) {
-                     console.error("Error fetching initial data:", initialError);
-                     // Avoid overwriting more specific errors from fetch logic if already set
-                     if (!error) setError(`Failed to load initial data: ${initialError.message}.`);
-                 }
-            } finally {
-                 if (isMounted) { setLoading(false); }
+        
+        const loadData = async () => {
+            if (isMounted) {
+                await fetchInitialData();
             }
         };
-        fetchInitialData();
-        return () => { isMounted = false };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [fetchShiftData]); // Dependency on the memoized fetch function
-
+        
+        loadData();
+        
+        return () => { 
+            isMounted = false;
+        };
+    }, [fetchInitialData]); // Dependency on the memoized fetchInitialData function
 
     // --- Calendar Logic & Constants (Unchanged) ---
     const { year, month, monthName, daysInMonth, datesInMonth } = useMemo(() => {
