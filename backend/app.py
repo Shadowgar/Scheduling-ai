@@ -7,6 +7,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 from datetime import datetime, date # Ensure date is imported
 import enum
+import logging # Import logging
 
 # --- Add these imports ---
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, current_user, get_jwt_identity
@@ -19,6 +20,13 @@ load_dotenv()
 # --- Flask App Initialization ---
 app = Flask(__name__) # Define app instance EARLY
 CORS(app) # Enable CORS for all routes
+
+# --- Configure Logging ---
+# Configure logging to show info level messages
+logging.basicConfig(level=logging.INFO)
+# You can also configure Flask's logger specifically if needed
+# app.logger.setLevel(logging.INFO)
+
 
 # --- Database Configuration ---
 db_url = os.getenv('DATABASE_URL')
@@ -145,12 +153,10 @@ class Shift(db.Model):
 def user_lookup_callback(_jwt_header, jwt_data):
     identity_str = jwt_data["sub"] # The 'sub' claim is now a string
     try:
-        # *** FIX: Convert the string ID back to an integer for database lookup ***
         identity_int = int(identity_str)
     except ValueError:
         app.logger.warning(f"Invalid non-integer subject found in JWT: {identity_str}")
         return None # Cannot look up user if ID isn't an integer string
-    # Use db.session.get which is efficient for primary key lookups
     return db.session.get(Employee, identity_int)
 
 
@@ -172,28 +178,60 @@ def login():
     employee = Employee.query.filter_by(email=email).first()
 
     if employee and employee.check_password(password):
-        # *** FIX: Convert employee ID to string for JWT identity ***
         access_token = create_access_token(identity=str(employee.id))
+        app.logger.info(f"User logged in successfully: {employee.email} (ID: {employee.id})") # Log success
         return jsonify(
             access_token=access_token,
             user=employee.to_dict() # Contains the role
         ), 200
     else:
+        app.logger.warning(f"Failed login attempt for email: {email}") # Log failure
         return jsonify({"error": "Invalid credentials"}), 401
 
 
 @app.route('/api/auth/me', methods=['GET'])
 @jwt_required() # Keep this required - need token to know who 'me' is
 def get_current_user_info():
-    # current_user is loaded via user_lookup_callback
     if not current_user:
-         # Should ideally not happen if token was valid unless user deleted mid-session
+         app.logger.error("get_current_user_info called but current_user is None (token might be valid but user deleted?)")
          return jsonify({"error": "User not found for token"}), 404
+    # app.logger.info(f"Returning user info for: {current_user.email}") # Can be noisy
     return jsonify(user=current_user.to_dict()), 200
 
 # --- Employee API Endpoints ---
+
+# --- NEW: Endpoint for Admin/Management View ---
+@app.route('/api/admin/employees', methods=['GET'])
+@jwt_required() # Require login
+def handle_admin_employees():
+    app.logger.info(f"Request received for /api/admin/employees by user: {current_user.email if current_user else 'Unknown'}")
+
+    # --- Permission Check: Ensure only supervisors can access ---
+    if not current_user or current_user.role != 'supervisor':
+        app.logger.warning(f"Permission denied for /api/admin/employees. User: {current_user.email if current_user else 'None'}, Role: {current_user.role if current_user else 'N/A'}")
+        return jsonify({"error": "Permission denied: Only supervisors can access the full employee list"}), 403
+
+    # --- Fetch Employees for Admin View ---
+    if request.method == 'GET':
+        try:
+            # Fetch all employees EXCEPT 'terminated' status
+            admin_employees = Employee.query.filter(
+                Employee.status != EmployeeStatus.TERMINATED
+            ).order_by(Employee.name).all()
+
+            # Alternative: Fetch ALL employees regardless of status
+            # admin_employees = Employee.query.order_by(Employee.name).all()
+
+            app.logger.info(f"Returning {len(admin_employees)} employees for admin view.")
+            return jsonify([employee.to_dict() for employee in admin_employees]), 200
+        except Exception as e:
+            app.logger.error(f"Error fetching admin employees: {e}", exc_info=True)
+            return jsonify({"error": "Internal server error fetching admin employees"}), 500
+
+
+# --- ORIGINAL Endpoint for Schedule View & Creating Employees ---
 @app.route('/api/employees', methods=['GET', 'POST'])
-@jwt_required(optional=True) # Allows anonymous GET, requires token for POST
+@jwt_required(optional=True) # Allows anonymous GET for schedule, requires token for POST
 def handle_employees():
     # current_user is None if no token or invalid token provided
     # current_user is Employee object if valid token provided
@@ -201,21 +239,20 @@ def handle_employees():
     if request.method == 'POST':
         # --- POST requires authentication AND supervisor role ---
         if not current_user:
+            app.logger.warning("Attempt to POST /api/employees without authentication.")
             return jsonify({"error": "Authentication required to create employees"}), 401
         if current_user.role != 'supervisor':
+            app.logger.warning(f"Attempt to POST /api/employees by non-supervisor: {current_user.email} (Role: {current_user.role})")
             return jsonify({"error": "Permission denied: Only supervisors can create employees"}), 403
 
         data = request.get_json()
         password = data.get('password')
-        if not password:
-            return jsonify({"error": "Password is required for new employees"}), 400
-        if 'email' not in data or not data['email']:
-             return jsonify({"error": "Email is required"}), 400
-
-        required_fields = ['name', 'role', 'hire_date', 'email', 'password']
-        if not all(field in data for field in required_fields):
-            missing = [f for f in required_fields if f not in data]
-            return jsonify({"error": f"Missing required fields: {', '.join(missing)}"}), 400
+        # Basic validation (add more as needed)
+        if not password: return jsonify({"error": "Password is required for new employees"}), 400
+        if not data.get('email'): return jsonify({"error": "Email is required"}), 400
+        if not data.get('name'): return jsonify({"error": "Name is required"}), 400
+        if not data.get('role'): return jsonify({"error": "Role is required"}), 400
+        if not data.get('hire_date'): return jsonify({"error": "Hire date is required"}), 400
 
         if Employee.query.filter_by(email=data['email']).first():
             return jsonify({"error": "Email address already registered"}), 409
@@ -224,7 +261,7 @@ def handle_employees():
             hire_date_obj = datetime.strptime(data['hire_date'], '%Y-%m-%d').date()
             end_date_obj = datetime.strptime(data['end_date'], '%Y-%m-%d').date() if data.get('end_date') else None
             status_enum = EmployeeStatus(data['status']) if data.get('status') else EmployeeStatus.ACTIVE
-            show_on_schedule_val = data.get('show_on_schedule', True)
+            show_on_schedule_val = data.get('show_on_schedule', True) # Default to True if not provided
 
             new_employee = Employee(
                 name=data['name'],
@@ -237,14 +274,17 @@ def handle_employees():
                 seniority_level=data.get('seniority_level'),
                 max_hours_per_week=data.get('max_hours_per_week'),
                 min_hours_per_week=data.get('min_hours_per_week'),
-                show_on_schedule=bool(show_on_schedule_val)
+                # Ensure boolean conversion from potentially varied inputs
+                show_on_schedule=str(show_on_schedule_val).lower() in ['true', '1', 'yes']
             )
             new_employee.set_password(password)
             db.session.add(new_employee)
             db.session.commit()
+            app.logger.info(f"New employee created: {new_employee.email} (ID: {new_employee.id}) by {current_user.email}")
             return jsonify(new_employee.to_dict()), 201
         except ValueError as e:
             db.session.rollback()
+            app.logger.error(f"ValueError creating employee: {e}")
             return jsonify({"error": f"Invalid data format: {e}"}), 400
         except Exception as e:
             db.session.rollback()
@@ -252,16 +292,18 @@ def handle_employees():
             return jsonify({"error": "Internal server error"}), 500
 
     elif request.method == 'GET':
-        # If optional=True, current_user might be None or an Employee object
-        # The logic here doesn't change based on auth status, it just filters employees
+        # This endpoint is for the SCHEDULE VIEW - keep the filter!
         try:
+            # Fetch only employees meant to be shown on the schedule AND are active
             schedulable_employees = Employee.query.filter_by(
-                show_on_schedule=True
+                show_on_schedule=True,
+                status=EmployeeStatus.ACTIVE # Only show active employees on schedule
             ).order_by(Employee.name).all()
+            # app.logger.info(f"Returning {len(schedulable_employees)} employees for schedule view.") # Can be noisy
             return jsonify([employee.to_dict() for employee in schedulable_employees]), 200
         except Exception as e:
-            app.logger.error(f"Error fetching employees: {e}", exc_info=True)
-            return jsonify({"error": "Internal server error fetching employees"}), 500
+            app.logger.error(f"Error fetching schedulable employees: {e}", exc_info=True)
+            return jsonify({"error": "Internal server error fetching schedulable employees"}), 500
 
 # --- Individual Employee Routes (Keep Protected) ---
 @app.route('/api/employees/<int:employee_id>', methods=['GET', 'PUT', 'DELETE'])
@@ -290,51 +332,64 @@ def handle_employee(employee_id):
         data = request.get_json()
         if not data: return jsonify({"error": "Invalid input"}), 400
 
-        try:
-            if not is_supervisor:
-                restricted_fields = ['role', 'hire_date', 'end_date', 'status', 'seniority_level', 'max_hours_per_week', 'min_hours_per_week', 'show_on_schedule']
-                for field in restricted_fields:
-                    if field in data:
-                         current_value = getattr(employee, field, None)
-                         new_value = data.get(field)
-                         # Basic comparison; more complex types might need specific handling
-                         if current_value != new_value:
-                              # Add specific handling for bool if needed
-                              if isinstance(current_value, bool) and not isinstance(new_value, bool):
-                                   if str(new_value).lower() in ['true', '1']: new_value = True
-                                   elif str(new_value).lower() in ['false', '0']: new_value = False
-                                   else: pass # Let comparison fail
-                              if current_value != new_value:
+        # Prevent non-supervisors from changing restricted fields
+        if not is_supervisor:
+            restricted_fields = ['role', 'hire_date', 'end_date', 'status', 'seniority_level', 'max_hours_per_week', 'min_hours_per_week', 'show_on_schedule']
+            for field in restricted_fields:
+                if field in data and data[field] != getattr(employee, field):
+                    # Handle boolean comparison carefully
+                    if field == 'show_on_schedule':
+                         current_val = getattr(employee, field)
+                         new_val = str(data[field]).lower() in ['true', '1', 'yes']
+                         if current_val != new_val:
+                              return jsonify({"error": f"Permission denied: Cannot change '{field}'"}), 403
+                    elif field == 'status':
+                         current_val = getattr(employee, field)
+                         try:
+                              new_val = EmployeeStatus(data[field])
+                              if current_val != new_val:
                                    return jsonify({"error": f"Permission denied: Cannot change '{field}'"}), 403
+                         except ValueError: pass # Let main validation handle bad enum value
+                    elif data[field] != getattr(employee, field):
+                         return jsonify({"error": f"Permission denied: Cannot change '{field}'"}), 403
 
-            # Apply updates
+
+        try:
+            # Apply updates (allow self-update for non-restricted fields)
             if 'name' in data: employee.name = data['name']
             if 'email' in data:
                  if data['email'] != employee.email and Employee.query.filter(Employee.email == data['email'], Employee.id != employee_id).first():
                      return jsonify({"error": "Email address already registered by another user"}), 409
                  employee.email = data['email']
-            if 'phone' in data: employee.phone = data.get('phone')
+            if 'phone' in data: employee.phone = data.get('phone') # Allow clearing phone
 
+            # Supervisor-only fields
             if is_supervisor:
                 if 'role' in data: employee.role = data['role']
                 if 'hire_date' in data: employee.hire_date = datetime.strptime(data['hire_date'], '%Y-%m-%d').date()
                 if 'end_date' in data: employee.end_date = datetime.strptime(data['end_date'], '%Y-%m-%d').date() if data.get('end_date') else None
-                if 'status' in data: employee.status = EmployeeStatus(data['status'])
+                if 'status' in data: employee.status = EmployeeStatus(data['status']) # Validate enum
                 if 'seniority_level' in data: employee.seniority_level = data.get('seniority_level')
                 if 'max_hours_per_week' in data: employee.max_hours_per_week = data.get('max_hours_per_week')
                 if 'min_hours_per_week' in data: employee.min_hours_per_week = data.get('min_hours_per_week')
+                # Handle show_on_schedule carefully for boolean conversion
                 if 'show_on_schedule' in data:
-                    employee.show_on_schedule = bool(data['show_on_schedule'])
+                    employee.show_on_schedule = str(data['show_on_schedule']).lower() in ['true', '1', 'yes']
 
+            # Password change (allowed by self or supervisor)
             if 'password' in data and data['password']:
                  if not is_self and not is_supervisor:
+                     # This check is technically redundant due to the PUT permission check above, but safe to keep
                      return jsonify({"error": "Permission denied: Cannot change password for other users"}), 403
                  employee.set_password(data['password'])
 
+            employee.updated_at = datetime.utcnow() # Manually update timestamp if needed
             db.session.commit()
+            app.logger.info(f"Employee {employee_id} updated by {current_user.email}")
             return jsonify(employee.to_dict()), 200
-        except ValueError as e:
+        except ValueError as e: # Catches bad date formats or bad enum values
             db.session.rollback()
+            app.logger.error(f"ValueError updating employee {employee_id}: {e}")
             return jsonify({"error": f"Invalid data format: {e}"}), 400
         except Exception as e:
             db.session.rollback()
@@ -342,10 +397,19 @@ def handle_employee(employee_id):
             return jsonify({"error": "Internal server error"}), 500
 
     elif request.method == 'DELETE':
+        # Permission check already done (only supervisor)
         try:
+            # Consider setting status to 'terminated' instead of deleting?
+            # employee.status = EmployeeStatus.TERMINATED
+            # employee.end_date = date.today()
+            # db.session.commit()
+            # Or, proceed with actual deletion:
+            email_deleted = employee.email # Log email before deleting
             db.session.delete(employee)
             db.session.commit()
-            return jsonify({"message": f"Employee with ID {employee_id} deleted successfully."}), 200
+            app.logger.info(f"Employee {employee_id} ({email_deleted}) deleted by {current_user.email}")
+            return jsonify({"message": f"Employee with ID {employee_id} deleted successfully."}), 200 # 200 OK with message
+            # return '', 204 # Or 204 No Content
         except Exception as e:
             db.session.rollback()
             app.logger.error(f"Error deleting employee {employee_id}: {e}", exc_info=True)
@@ -380,12 +444,13 @@ def handle_shifts():
                 end_time=end_time_obj,
                 notes=data.get('notes')
             )
-            # Validation for end_time > start_time happens in the model via @validates
             db.session.add(new_shift)
             db.session.commit()
+            app.logger.info(f"Shift created for employee {data['employee_id']} by {current_user.email}")
             return jsonify(new_shift.to_dict()), 201
-        except ValueError as e:
+        except ValueError as e: # Catches bad ISO formats or end <= start from model validation
             db.session.rollback()
+            app.logger.error(f"ValueError creating shift: {e}")
             return jsonify({"error": f"Invalid data format: {e}"}), 400
         except Exception as e:
             db.session.rollback()
@@ -404,19 +469,16 @@ def handle_shifts():
 
         try:
             start_of_month = datetime(year, month, 1)
-            # Calculate end of month (handle month wrap-around)
-            if month == 12:
-                end_of_month = datetime(year + 1, 1, 1)
-            else:
-                end_of_month = datetime(year, month + 1, 1)
+            if month == 12: end_of_month = datetime(year + 1, 1, 1)
+            else: end_of_month = datetime(year, month + 1, 1)
 
-            # Query shifts that start within the specified month
             shifts_in_month = Shift.query.filter(
                 Shift.start_time >= start_of_month,
-                Shift.start_time < end_of_month # Use < end_of_month to exclude start of next month
+                Shift.start_time < end_of_month
             ).order_by(Shift.start_time).all()
 
-            # --- FIX for 404: Return empty list if no shifts found, not 404 ---
+            # Return empty list if no shifts found, not 404
+            # app.logger.info(f"Returning {len(shifts_in_month)} shifts for {year}-{month}") # Can be noisy
             return jsonify([shift.to_dict() for shift in shifts_in_month]), 200
 
         except Exception as e:
@@ -440,24 +502,40 @@ def handle_shift(shift_id):
         if not data: return jsonify({"error": "Invalid input"}), 400
 
         try:
-            # Update fields if provided in the request
+            updated = False
             if 'employee_id' in data:
-                # Check if new employee exists
-                if not db.session.get(Employee, data['employee_id']):
+                 if not db.session.get(Employee, data['employee_id']):
                      return jsonify({"error": f"Employee with ID {data['employee_id']} not found"}), 404
-                shift.employee_id = data['employee_id']
+                 if shift.employee_id != data['employee_id']:
+                      shift.employee_id = data['employee_id']
+                      updated = True
             if 'start_time' in data:
-                shift.start_time = datetime.fromisoformat(data['start_time'].replace('Z', '+00:00'))
+                new_start = datetime.fromisoformat(data['start_time'].replace('Z', '+00:00'))
+                if shift.start_time != new_start:
+                     shift.start_time = new_start
+                     updated = True
             if 'end_time' in data:
-                shift.end_time = datetime.fromisoformat(data['end_time'].replace('Z', '+00:00'))
+                new_end = datetime.fromisoformat(data['end_time'].replace('Z', '+00:00'))
+                if shift.end_time != new_end:
+                     shift.end_time = new_end
+                     updated = True
             if 'notes' in data:
-                shift.notes = data.get('notes')
+                if shift.notes != data.get('notes'): # Allow notes to be cleared
+                     shift.notes = data.get('notes')
+                     updated = True
 
-            # Re-validate end_time > start_time (model validation should catch this on commit)
-            db.session.commit()
+            if updated:
+                 shift.updated_at = datetime.utcnow() # Manually update timestamp
+                 db.session.commit()
+                 app.logger.info(f"Shift {shift_id} updated by {current_user.email}")
+            else:
+                 app.logger.info(f"Shift {shift_id} update requested by {current_user.email}, but no changes detected.")
+
+
             return jsonify(shift.to_dict()), 200
-        except ValueError as e:
+        except ValueError as e: # Catches bad ISO formats or end <= start from model validation
             db.session.rollback()
+            app.logger.error(f"ValueError updating shift {shift_id}: {e}")
             return jsonify({"error": f"Invalid data format: {e}"}), 400
         except Exception as e:
             db.session.rollback()
@@ -468,7 +546,9 @@ def handle_shift(shift_id):
         try:
             db.session.delete(shift)
             db.session.commit()
-            return jsonify({"message": f"Shift with ID {shift_id} deleted successfully."}), 200
+            app.logger.info(f"Shift {shift_id} deleted by {current_user.email}")
+            return jsonify({"message": f"Shift with ID {shift_id} deleted successfully."}), 200 # 200 OK with message
+            # return '', 204 # Or 204 No Content
         except Exception as e:
             db.session.rollback()
             app.logger.error(f"Error deleting shift {shift_id}: {e}", exc_info=True)
@@ -477,6 +557,5 @@ def handle_shift(shift_id):
 
 # --- Main Execution Block ---
 if __name__ == '__main__':
-    # Use 0.0.0.0 to make it accessible on the network if needed,
-    # otherwise default is 127.0.0.1 (localhost)
+    # Use 0.0.0.0 to make it accessible on the network if needed
     app.run(debug=True, host='0.0.0.0', port=5000) # Use port 5000 for Flask dev server

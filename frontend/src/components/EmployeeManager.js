@@ -1,6 +1,6 @@
 // frontend/src/components/EmployeeManager.js
-import React, { useState, useEffect, useCallback } from 'react'; // Added useCallback
-import './EmployeeManager.css';
+import React, { useState, useEffect, useCallback } from 'react';
+import './EmployeeManager.css'; // Make sure you have this CSS file
 
 const EmployeeManager = () => {
     const [employees, setEmployees] = useState([]);
@@ -9,73 +9,76 @@ const EmployeeManager = () => {
 
     // State for Add/Edit Form
     const [showForm, setShowForm] = useState(false);
-    const [editingEmployee, setEditingEmployee] = useState(null);
-    const [formData, setFormData] = useState({
-        name: '',
-        email: '', // Add email
-        phone: '', // Add phone
-        role: 'employee',
-        hire_date: '', // Add hire_date
-        show_on_schedule: true, // Add show_on_schedule
-        // Add other fields as needed (status, end_date, etc.)
-    });
+    const [editingEmployee, setEditingEmployee] = useState(null); // null for Add, employee object for Edit
+    const [formData, setFormData] = useState(getInitialFormData()); // Use helper for initial state
     const [isSubmitting, setIsSubmitting] = useState(false); // For form submission loading state
 
-    // --- Fetch Employees ---
-    // Use useCallback to memoize fetchEmployees if it were passed as a prop or used in another effect
+    // Helper to get initial/reset form data
+    function getInitialFormData() {
+        return {
+            name: '',
+            email: '',
+            phone: '',
+            role: 'employee', // Default role
+            hire_date: new Date().toISOString().split('T')[0], // Default to today
+            end_date: '', // Optional end date
+            status: 'active', // Default status
+            seniority_level: '',
+            max_hours_per_week: '',
+            min_hours_per_week: '',
+            show_on_schedule: true, // Default to true
+            password: '', // Required only for adding
+        };
+    }
+
+    // --- Fetch Employees for Admin View ---
     const fetchEmployees = useCallback(async () => {
+        console.log("fetchEmployees called in EmployeeManager"); // Log when called
         setLoading(true);
         setError(null);
-        const token = localStorage.getItem('accessToken'); // *** GET TOKEN ***
+        const token = localStorage.getItem('accessToken');
 
-        // *** Basic check if token exists - needed for protected routes ***
         if (!token) {
             setError("Authentication required to manage employees.");
             setLoading(false);
-            // Optionally redirect to login here if needed, though App.js routing should handle it
             return;
         }
 
         try {
-            // *** USE RELATIVE URL FOR PROXY ***
-            const response = await fetch('/api/employees', {
+            // *** USE THE NEW ADMIN ENDPOINT ***
+            const adminEmployeesApiUrl = '/api/admin/employees';
+            console.log('Fetching admin employees from:', adminEmployeesApiUrl);
+
+            const response = await fetch(adminEmployeesApiUrl, {
                 headers: {
-                    // *** ADD AUTHORIZATION HEADER ***
                     'Authorization': `Bearer ${token}`
                 }
             });
 
-            // Check for auth errors specifically
             if (response.status === 401 || response.status === 403) {
-                 throw new Error(`Authorization failed (${response.status}). Please log in again.`);
-            }
-            if (response.status === 422) { // Handle potential JWT processing errors
-                 const errData = await response.json();
-                 throw new Error(`Error processing request: ${errData.msg || response.statusText}`);
+                 const errData = await response.json().catch(() => ({})); // Try parsing error
+                 throw new Error(errData.error || `Authorization failed (${response.status}). Please log in again or check permissions.`);
             }
             if (!response.ok) {
-                 throw new Error(`Network response was not ok (${response.status})`);
+                 const errData = await response.json().catch(() => ({})); // Try parsing error
+                 throw new Error(errData.error || `Network response was not ok (${response.status})`);
             }
 
             const data = await response.json();
+            console.log("Admin employees received:", data); // Log received data
+            // Sorting by name, could add role sorting later if needed
             setEmployees(data.sort((a, b) => a.name.localeCompare(b.name)));
         } catch (error) {
-            console.error("Error fetching employees:", error);
+            console.error("Error fetching admin employees:", error);
             setError(`Failed to load employees: ${error.message}`);
-            // If auth fails, clear potentially bad token? Risky, maybe just show error.
-            // if (error.message.includes("Authorization failed")) {
-            //     localStorage.removeItem('accessToken');
-            // }
         } finally {
             setLoading(false);
         }
-    // No dependencies needed if it only runs on mount and doesn't rely on props/state
-    // However, if you add filtering based on state later, add those state vars here.
-    }, []); // fetchEmployees itself is memoized
+    }, []); // No external dependencies needed for this fetch logic itself
 
     // Fetch employees on component mount
     useEffect(() => {
-        console.log("EmployeeManager mounting or fetchEmployees changed, fetching data...");
+        console.log("EmployeeManager mounting, fetching employees...");
         fetchEmployees();
     }, [fetchEmployees]); // Depend on the memoized fetchEmployees function
 
@@ -85,54 +88,50 @@ const EmployeeManager = () => {
         const { name, value, type, checked } = e.target;
         setFormData(prev => ({
             ...prev,
+            // Use checked for checkbox, value otherwise
             [name]: type === 'checkbox' ? checked : value
         }));
     };
 
-    const getInitialFormData = () => ({
-        name: '',
-        email: '',
-        phone: '',
-        role: 'employee',
-        hire_date: new Date().toISOString().split('T')[0], // Default to today
-        show_on_schedule: true,
-        password: '', // Only for adding, clear on edit load
-        // Add other defaults
-    });
-
-
     const handleShowAddForm = () => {
-        setEditingEmployee(null);
-        setFormData(getInitialFormData());
+        setEditingEmployee(null); // Ensure it's an add operation
+        setFormData(getInitialFormData()); // Reset form
         setShowForm(true);
-        setError(null);
+        setError(null); // Clear previous form errors
     };
 
     const handleShowEditForm = (employee) => {
+        console.log("Editing employee:", employee); // Log the employee being edited
         setEditingEmployee(employee);
+        // Pre-fill form data from the employee object
         setFormData({
             name: employee.name || '',
             email: employee.email || '',
             phone: employee.phone || '',
             role: employee.role || 'employee',
-            hire_date: employee.hire_date || '', // Assumes ISO string format from backend
+            hire_date: employee.hire_date || '', // Assumes ISO string YYYY-MM-DD format
+            end_date: employee.end_date || '', // Assumes ISO string YYYY-MM-DD format
+            status: employee.status || 'active',
+            seniority_level: employee.seniority_level !== null ? String(employee.seniority_level) : '', // Handle null
+            max_hours_per_week: employee.max_hours_per_week !== null ? String(employee.max_hours_per_week) : '',
+            min_hours_per_week: employee.min_hours_per_week !== null ? String(employee.min_hours_per_week) : '',
             show_on_schedule: employee.show_on_schedule !== undefined ? employee.show_on_schedule : true,
-            password: '', // Clear password field for edits
-            // Map other fields from employee.to_dict()
+            password: '', // Clear password field for edits - DO NOT pre-fill hash
         });
         setShowForm(true);
-        setError(null);
+        setError(null); // Clear previous form errors
     };
 
     const handleCancelForm = () => {
         setShowForm(false);
         setEditingEmployee(null);
-        setError(null);
+        setError(null); // Clear any form errors
     };
 
+    // --- Form Submission (Add/Update) ---
     const handleSubmitForm = async (e) => {
         e.preventDefault();
-        setError(null);
+        setError(null); // Clear previous errors
         setIsSubmitting(true);
 
         const token = localStorage.getItem('accessToken');
@@ -148,14 +147,27 @@ const EmployeeManager = () => {
         const method = editingEmployee ? 'PUT' : 'POST';
 
         // Prepare data, remove empty password for PUT unless it's being changed
-        const dataToSend = { ...formData };
+        // Convert potentially empty string numbers to null or integer
+        const dataToSend = {
+            ...formData,
+            seniority_level: formData.seniority_level ? parseInt(formData.seniority_level, 10) : null,
+            max_hours_per_week: formData.max_hours_per_week ? parseInt(formData.max_hours_per_week, 10) : null,
+            min_hours_per_week: formData.min_hours_per_week ? parseInt(formData.min_hours_per_week, 10) : null,
+            end_date: formData.end_date || null, // Ensure null if empty string
+        };
+
+        // Remove password from payload if editing and password field is empty
         if (method === 'PUT' && !dataToSend.password) {
             delete dataToSend.password;
         }
-        // Ensure boolean is sent correctly
-        dataToSend.show_on_schedule = !!dataToSend.show_on_schedule;
+        // Ensure password is included if creating
+        if (method === 'POST' && !dataToSend.password) {
+             setError("Password is required for new employees.");
+             setIsSubmitting(false);
+             return;
+        }
 
-        console.log(`Submitting ${method} to ${url} with data:`, dataToSend);
+        console.log(`Submitting ${method} to ${url} with data:`, JSON.stringify(dataToSend, null, 2)); // Pretty print payload
 
         try {
             const response = await fetch(url, {
@@ -167,10 +179,11 @@ const EmployeeManager = () => {
                 body: JSON.stringify(dataToSend)
             });
 
-            const result = await response.json(); // Try to parse response
+            const result = await response.json(); // Try to parse response regardless of status
 
             if (!response.ok) {
                  // Use error message from backend if available
+                 console.error("API Error Response:", result);
                  throw new Error(result.error || `Request failed with status ${response.status}`);
             }
 
@@ -188,7 +201,8 @@ const EmployeeManager = () => {
 
     // --- Delete Handling ---
     const handleDeleteEmployee = async (employeeId, employeeName) => {
-        if (window.confirm(`Are you sure you want to delete employee "${employeeName}"? This cannot be undone.`)) {
+        // Optional: Add extra confirmation or prevent deleting self/active employees
+        if (window.confirm(`Are you sure you want to delete employee "${employeeName}"? This action might be irreversible depending on backend logic (delete vs terminate).`)) {
             setError(null); // Clear previous errors
             const token = localStorage.getItem('accessToken');
             if (!token) {
@@ -206,15 +220,16 @@ const EmployeeManager = () => {
                     }
                  });
 
-                 // DELETE might return 200 OK with message or 204 No Content
-                 if (response.status === 204) { // Handle 204 No Content
+                 // Check for success (200 OK with message or 204 No Content)
+                 if (response.status === 204) {
                     console.log(`Employee ${employeeId} deleted successfully (204).`);
-                 } else {
+                 } else if (response.ok) {
                     const result = await response.json(); // Assume 200 OK has message
-                    if (!response.ok) {
-                         throw new Error(result.error || `Failed to delete (${response.status})`);
-                    }
                     console.log(`Employee ${employeeId} deleted successfully:`, result.message);
+                 } else {
+                     // Try to parse error from non-ok response
+                     const result = await response.json().catch(() => ({}));
+                     throw new Error(result.error || `Failed to delete (${response.status})`);
                  }
 
                  fetchEmployees(); // Refresh list on success
@@ -228,18 +243,18 @@ const EmployeeManager = () => {
 
 
     // --- Render Logic ---
-    if (loading && employees.length === 0) return <div>Loading Employees...</div>;
+    if (loading && employees.length === 0) return <div className="loading-container">Loading Employees...</div>;
     // Display error prominently if it occurs outside the form context and prevents loading
-    if (error && employees.length === 0 && !showForm) return <div className="error">{error} <button onClick={fetchEmployees}>Retry</button></div>;
+    if (error && employees.length === 0 && !showForm) return <div className="error error-message">Error: {error} <button onClick={fetchEmployees}>Retry</button></div>;
 
 
     return (
         <div className="employee-manager">
             <h2>Manage Employees</h2>
 
-             {/* Show general errors that don't block the whole view */}
-             {error && employees.length > 0 && !showForm && (
-                <div className="error-inline">{error}</div>
+             {/* Show general errors (like delete failure) that don't block the whole view */}
+             {error && !showForm && employees.length > 0 && (
+                <div className="error error-message error-inline">{error}</div>
              )}
 
 
@@ -256,6 +271,7 @@ const EmployeeManager = () => {
                     {/* Display form-specific errors */}
                     {error && <div className="form-error error-message">{error}</div>}
                     <form onSubmit={handleSubmitForm}>
+                        {/* Use grid or flexbox for better layout if needed */}
                         {/* Name */}
                         <div className="form-group">
                             <label htmlFor="name">Name:</label>
@@ -279,12 +295,29 @@ const EmployeeManager = () => {
                                 <option value="supervisor">Supervisor</option>
                                 <option value="police">Police</option>
                                 <option value="security">Security</option>
+                                {/* Add other valid roles */}
                             </select>
                         </div>
                          {/* Hire Date */}
                          <div className="form-group">
                             <label htmlFor="hire_date">Hire Date:</label>
                             <input type="date" id="hire_date" name="hire_date" value={formData.hire_date} onChange={handleInputChange} required disabled={isSubmitting}/>
+                        </div>
+                         {/* End Date */}
+                         <div className="form-group">
+                            <label htmlFor="end_date">End Date:</label>
+                            <input type="date" id="end_date" name="end_date" value={formData.end_date || ''} onChange={handleInputChange} disabled={isSubmitting}/>
+                        </div>
+                         {/* Status */}
+                         <div className="form-group">
+                            <label htmlFor="status">Status:</label>
+                            <select id="status" name="status" value={formData.status} onChange={handleInputChange} required disabled={isSubmitting}>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="on_leave">On Leave</option>
+                                {/* Only allow setting terminated via specific action? */}
+                                {/* <option value="terminated">Terminated</option> */}
+                            </select>
                         </div>
                          {/* Show on Schedule */}
                          <div className="form-group checkbox-group">
@@ -295,9 +328,23 @@ const EmployeeManager = () => {
                          <div className="form-group">
                             <label htmlFor="password">Password:</label>
                             <input type="password" id="password" name="password" value={formData.password} onChange={handleInputChange} required={!editingEmployee} placeholder={editingEmployee ? '(Leave blank to keep unchanged)' : 'Required for new employee'} disabled={isSubmitting}/>
-                        </div>
+                            {!editingEmployee && <small>Password is required when adding a new employee.</small>}
+                            {editingEmployee && <small>Leave blank to keep the current password.</small>}
+                         </div>
 
-                        {/* Add other fields here */}
+                        {/* Optional Fields */}
+                         <div className="form-group">
+                            <label htmlFor="seniority_level">Seniority Level:</label>
+                            <input type="number" id="seniority_level" name="seniority_level" value={formData.seniority_level || ''} onChange={handleInputChange} disabled={isSubmitting}/>
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="max_hours_per_week">Max Hours/Week:</label>
+                            <input type="number" id="max_hours_per_week" name="max_hours_per_week" value={formData.max_hours_per_week || ''} onChange={handleInputChange} disabled={isSubmitting}/>
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="min_hours_per_week">Min Hours/Week:</label>
+                            <input type="number" id="min_hours_per_week" name="min_hours_per_week" value={formData.min_hours_per_week || ''} onChange={handleInputChange} disabled={isSubmitting}/>
+                        </div>
 
                         <div className="form-actions">
                             <button type="submit" className="save-button" disabled={isSubmitting}>
@@ -320,7 +367,8 @@ const EmployeeManager = () => {
                             <th>Name</th>
                             <th>Email</th>
                             <th>Role</th>
-                            <th>Shows on Schedule?</th>
+                            <th>Shows on Schedule?</th> {/* Added column */}
+                            <th>Status</th> {/* Added column */}
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -330,16 +378,18 @@ const EmployeeManager = () => {
                                 <td>{emp.name}</td>
                                 <td>{emp.email}</td>
                                 <td>{emp.role || 'N/A'}</td>
-                                <td>{emp.show_on_schedule ? 'Yes' : 'No'}</td>
-                                <td>
+                                <td>{emp.show_on_schedule ? 'Yes' : 'No'}</td> {/* Display value */}
+                                <td>{emp.status || 'N/A'}</td> {/* Display value */}
+                                <td className="action-buttons">
                                     <button onClick={() => handleShowEditForm(emp)} className="edit-button">Edit</button>
+                                    {/* Prevent deleting self? Add logic if needed */}
                                     <button onClick={() => handleDeleteEmployee(emp.id, emp.name)} className="delete-button">Delete</button>
                                 </td>
                             </tr>
                         ))}
                         {employees.length === 0 && !loading && (
                             <tr>
-                                <td colSpan="5">No employees found.</td>
+                                <td colSpan="6">No employees found.</td> {/* Adjusted colspan */}
                             </tr>
                         )}
                     </tbody>
