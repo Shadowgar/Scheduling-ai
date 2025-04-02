@@ -24,6 +24,7 @@ const Navbar = ({ currentUser, onLogout }) => {
                     <>
                         {/* Use appropriate class for styling links */}
                         <Link to="/schedule" className="navbar-item">Schedule</Link>
+                        <Link to="/assistant">AI Assistant</Link>
                         {isAdmin && (
                             <Link to="/admin/employees" className="navbar-item">Manage Employees</Link>
                         )}

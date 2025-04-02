@@ -5,6 +5,7 @@ import EmployeeManager from './components/EmployeeManager';
 import Login from './components/Login';
 import Navbar from './components/Navbar';
 import './App.css';
+import OllamaAssistant from './components/OllamaAssistant';
 
 // ProtectedRoute remains the same conceptually
 const ProtectedRoute = ({ isAllowed, children, redirectTo = "/login" }) => {
@@ -138,6 +139,17 @@ function App() {
                                 </ProtectedRoute>
                             }
                         />
+                        <Route
+    path="/assistant"
+    element={
+        <ProtectedRoute
+            isAllowed={isAuthenticated}
+            redirectTo="/login"
+        >
+            <OllamaAssistant />
+        </ProtectedRoute>
+    }
+/>
                         <Route
                             path="/"
                             element={<Navigate to={isAuthenticated ? "/schedule" : "/login"} replace />}
