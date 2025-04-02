@@ -1,4 +1,5 @@
 import os
+import requests # --- Added requests import ---
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -38,6 +39,11 @@ if not jwt_secret:
     raise ValueError("No JWT_SECRET_KEY set in environment variables")
 app.config['JWT_SECRET_KEY'] = jwt_secret
 # --- End JWT Configuration ---
+
+# --- Ollama Configuration ---
+OLLAMA_API_URL = os.environ.get('OLLAMA_API_URL', 'http://localhost:11434/api')
+DEFAULT_MODEL = os.environ.get('OLLAMA_DEFAULT_MODEL', 'llama3')
+# --- End Ollama Configuration ---
 
 # --- Extensions Initialization ---
 db = SQLAlchemy(app) # Initialize SQLAlchemy extension
@@ -89,6 +95,9 @@ class Employee(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     shifts = db.relationship('Shift', backref='employee', lazy=True, cascade="all, delete-orphan")
+    # --- Added Ollama Relationship ---
+    ollama_queries = db.relationship('OllamaQuery', backref='employee', lazy=True, cascade="all, delete-orphan")
+    # --- End Added Ollama Relationship ---
 
     def set_password(self, password):
         if not password:
@@ -202,6 +211,33 @@ class Shift(db.Model):
         # Return the original value that was passed in for validation
         return value
     # --- END MODIFIED VALIDATOR ---
+
+
+# --- Ollama Query Model ---
+class OllamaQuery(db.Model):
+    __tablename__ = 'ollama_queries'
+
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=False)
+    query = db.Column(db.Text, nullable=False)
+    response = db.Column(db.Text, nullable=False)
+    model_used = db.Column(db.String(50), default=DEFAULT_MODEL) # Use DEFAULT_MODEL as default
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'employee_id': self.employee_id,
+            'employee_name': self.employee.name if self.employee else None,
+            'query': self.query,
+            'response': self.response,
+            'model_used': self.model_used,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+# --- End Ollama Query Model ---
+
 
 # --- JWT User Loading Callback ---
 @jwt.user_lookup_loader
@@ -360,9 +396,11 @@ def handle_employee(employee_id):
              if field not in allowed_self_edit_fields:
                  # Check if the value is actually changing before denying
                  current_value = getattr(employee, field, None)
-                 if data[field] != current_value: # Simplified check
-                      app.logger.warning(f"Self-edit attempt denied for field '{field}' by user {current_user.email}")
-                      return jsonify({"error": f"Permission denied: Cannot change '{field}' for yourself"}), 403
+                 # Simple check: if field exists in data and is not allowed for self-edit, deny
+                 # More robust check needed if we want to allow setting to the *same* value
+                 app.logger.warning(f"Self-edit attempt denied for field '{field}' by user {current_user.email}")
+                 return jsonify({"error": f"Permission denied: Cannot change '{field}' for yourself"}), 403
+
 
     if request.method == 'DELETE' and not is_supervisor:
          return jsonify({"error": "Permission denied: Only supervisors can delete employees"}), 403
@@ -499,11 +537,11 @@ def handle_shifts():
             start_time_obj = datetime.fromisoformat(data['start_time'].replace('Z', '+00:00'))
             end_time_obj = datetime.fromisoformat(data['end_time'].replace('Z', '+00:00'))
 
-            if not db.session.get(Employee, data['employee_id']):
+            if data['employee_id'] and not db.session.get(Employee, data['employee_id']): # Check if employee_id is provided and exists
                  return jsonify({"error": f"Employee with ID {data['employee_id']} not found"}), 404
 
             new_shift = Shift(
-                employee_id=data['employee_id'],
+                employee_id=data.get('employee_id'), # Allow null employee_id
                 start_time=start_time_obj, # Store aware datetime
                 end_time=end_time_obj,   # Store aware datetime
                 notes=data.get('notes'),
@@ -512,7 +550,7 @@ def handle_shifts():
             # The validator will now correctly compare aware datetimes
             db.session.add(new_shift)
             db.session.commit()
-            app.logger.info(f"Shift created for employee {data['employee_id']} by {current_user.email}")
+            app.logger.info(f"Shift created (Employee ID: {data.get('employee_id')}) by {current_user.email}")
             return jsonify(new_shift.to_dict()), 201
         except ValueError as e: # Catches validation errors (end_time, format)
             db.session.rollback()
@@ -574,8 +612,8 @@ def handle_shift(shift_id):
         try:
             updated = False # Track if changes occurred
             if 'employee_id' in data:
-                 new_emp_id = data['employee_id']
-                 if not db.session.get(Employee, new_emp_id):
+                 new_emp_id = data.get('employee_id') # Allow setting to null
+                 if new_emp_id and not db.session.get(Employee, new_emp_id): # Check only if not null
                      return jsonify({"error": f"Employee with ID {new_emp_id} not found"}), 404
                  if shift.employee_id != new_emp_id:
                       shift.employee_id = new_emp_id
@@ -636,10 +674,144 @@ def handle_shift(shift_id):
             app.logger.error(f"Error deleting shift {shift_id}: {e}", exc_info=True)
             return jsonify({"error": "Internal server error"}), 500
 
+# --- Ollama API Routes ---
+@app.route('/api/ollama/models', methods=['GET'])
+@jwt_required()
+def get_ollama_models():
+    """Get available models from Ollama"""
+    try:
+        # Use the configured OLLAMA_API_URL
+        api_endpoint = f"{OLLAMA_API_URL}/tags"
+        app.logger.info(f"Requesting models from Ollama: {api_endpoint}")
+        response = requests.get(api_endpoint)
+        response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
+
+        models_data = response.json()
+        models = models_data.get('models', [])
+        app.logger.info(f"Successfully retrieved {len(models)} models from Ollama.")
+        return jsonify(models), 200
+
+    except requests.exceptions.RequestException as e:
+        app.logger.error(f"Error connecting to Ollama at {OLLAMA_API_URL}: {str(e)}", exc_info=True)
+        return jsonify({'error': f"Error connecting to Ollama: {str(e)}"}), 503 # Service Unavailable
+    except Exception as e:
+        app.logger.error(f"Unexpected error getting Ollama models: {str(e)}", exc_info=True)
+        return jsonify({'error': f"An unexpected error occurred: {str(e)}"}), 500
+
+@app.route('/api/ollama/query', methods=['POST'])
+@jwt_required()
+def query_ollama():
+    """Send a query to Ollama and store the result"""
+    data = request.get_json()
+
+    if not data or not data.get('query'):
+        return jsonify({'error': 'Missing query in request'}), 400
+
+    # Use the current user's ID
+    employee_id = current_user.id
+
+    # Prepare the query for Ollama
+    model = data.get('model', DEFAULT_MODEL)
+    query_text = data['query']
+
+    # Call Ollama API
+    try:
+        ollama_payload = {
+            "model": model,
+            "prompt": query_text,
+            "stream": False # Keep stream false for simple response handling
+        }
+
+        api_endpoint = f"{OLLAMA_API_URL}/generate"
+        app.logger.info(f"Sending query to Ollama: model={model}, user={current_user.email}, endpoint={api_endpoint}")
+        response = requests.post(api_endpoint, json=ollama_payload)
+        response.raise_for_status() # Raise HTTPError for bad responses
+
+        # Extract the response
+        ollama_response = response.json()
+        response_text = ollama_response.get('response', '').strip() # Trim whitespace
+
+        if not response_text:
+             app.logger.warning(f"Ollama returned an empty response for query from user {current_user.email}")
+             # Decide if empty response is an error or just empty
+             # return jsonify({'error': 'Ollama returned an empty response'}), 500
+
+        # Store the query and response
+        new_query = OllamaQuery(
+            employee_id=employee_id,
+            query=query_text,
+            response=response_text,
+            model_used=model # Store the actual model used for the query
+        )
+
+        db.session.add(new_query)
+        db.session.commit()
+        app.logger.info(f"Stored Ollama query from user {current_user.email}, ID: {new_query.id}")
+
+        return jsonify({
+            'query': query_text,
+            'response': response_text,
+            'model': model,
+            'query_id': new_query.id
+        }), 200
+
+    except requests.exceptions.RequestException as e:
+        app.logger.error(f"Error connecting to Ollama or Ollama API error: {str(e)}", exc_info=True)
+        # Try to get more detail from response if available
+        error_detail = str(e)
+        if e.response is not None:
+            try:
+                error_detail = e.response.json().get('error', error_detail)
+            except ValueError: # Not JSON
+                error_detail = e.response.text
+        return jsonify({'error': f"Ollama API error: {error_detail}"}), 502 # Bad Gateway or similar
+    except Exception as e:
+        db.session.rollback() # Rollback DB changes if storing failed
+        app.logger.error(f"Error processing Ollama query: {str(e)}", exc_info=True)
+        return jsonify({'error': f"Error processing Ollama query: {str(e)}"}), 500
+
+@app.route('/api/ollama/history', methods=['GET'])
+@jwt_required()
+def get_ollama_history():
+    """Get the Ollama query history for the current user"""
+    try:
+        # Query history only for the currently logged-in user
+        queries = OllamaQuery.query.filter_by(employee_id=current_user.id).order_by(OllamaQuery.created_at.desc()).all()
+        app.logger.info(f"Fetched {len(queries)} Ollama history entries for user {current_user.email}")
+        return jsonify([query.to_dict() for query in queries]), 200
+    except Exception as e:
+        app.logger.error(f"Error fetching Ollama history for user {current_user.email}: {str(e)}", exc_info=True)
+        return jsonify({'error': f"Error fetching Ollama history: {str(e)}"}), 500
+
+@app.route('/api/ollama/history/<int:query_id>', methods=['DELETE'])
+@jwt_required()
+def delete_ollama_query(query_id):
+    """Delete a specific Ollama query from history"""
+    # Use get_or_404 to automatically handle not found cases
+    query = db.get_or_404(OllamaQuery, query_id, description=f"Ollama query with ID {query_id} not found.")
+
+    # Check if the query belongs to the current user OR if the user is a supervisor
+    if query.employee_id != current_user.id and current_user.access_role != AccessRole.SUPERVISOR:
+        app.logger.warning(f"User {current_user.email} (Role: {current_user.access_role.value}) attempted to delete query {query_id} belonging to user ID {query.employee_id}")
+        return jsonify({'error': 'Permission denied: Cannot delete this query'}), 403
+
+    try:
+        db.session.delete(query)
+        db.session.commit()
+        app.logger.info(f"Deleted Ollama query {query_id} by user {current_user.email}")
+        return jsonify({'message': 'Query deleted from history'}), 200
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error deleting Ollama query {query_id}: {str(e)}", exc_info=True)
+        return jsonify({'error': f"Error deleting query: {str(e)}"}), 500
+# --- End Ollama API Routes ---
+
+
 # --- Main Execution Block ---
 if __name__ == '__main__':
     # Consider environment variables for host/port/debug
     debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() in ['true', '1', 't']
     port = int(os.getenv('PORT', 5000))
-    host = os.getenv('HOST', '0.0.0.0')
+    host = os.getenv('HOST', '0.0.0.0') # Listen on all interfaces
+    app.logger.info(f"Starting Flask server on {host}:{port} (Debug: {debug_mode})")
     app.run(debug=debug_mode, host=host, port=port)
