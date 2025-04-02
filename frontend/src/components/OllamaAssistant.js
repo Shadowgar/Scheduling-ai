@@ -10,33 +10,58 @@ const OllamaAssistant = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!query.trim()) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+    setResponse(''); // Clear previous response
+
     try {
+      // --- Retrieve the token ---
       const token = localStorage.getItem('accessToken');
-      
-      const response = await fetch('/api/ollama/query', {
+
+      // --- Add check: Ensure token exists ---
+      if (!token) {
+        console.error('handleSubmit Error: No access token found in localStorage.');
+        setError('Authentication error: You might need to log in again.');
+        setIsLoading(false);
+        return; // Stop execution if no token
+      }
+      // --- End check ---
+
+      const apiResponse = await fetch('/api/ollama/query', { // Ensure this path is correct relative to your setup
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}` // Correctly sending the token
         },
-        body: JSON.stringify({ query })
+        body: JSON.stringify({ query }) // Sending the query text
       });
-      
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
+
+      // --- Improved error handling ---
+      if (!apiResponse.ok) {
+        let errorPayload = { message: `Request failed with status: ${apiResponse.status}` };
+        try {
+          // Try to parse backend error message if available
+          const backendError = await apiResponse.json();
+          errorPayload = backendError; // Use backend error
+        } catch (parseError) {
+          // Ignore if response wasn't JSON
+          console.warn("Could not parse error response as JSON.");
+        }
+        // Use the 'error' field from backend if it exists, otherwise use 'message' or default
+        throw new Error(errorPayload.error || errorPayload.message || `HTTP error! Status: ${apiResponse.status}`);
       }
-      
-      const data = await response.json();
-      setResponse(data.response || JSON.stringify(data, null, 2));
+      // --- End improved error handling ---
+
+      const data = await apiResponse.json();
+      setResponse(data.response || JSON.stringify(data, null, 2)); // Display response or formatted data
+
     } catch (err) {
-      setError(err.message);
       console.error('Error querying Ollama:', err);
+      // Set the error state with the message from the caught error
+      setError(err.message || 'An unexpected error occurred.');
     } finally {
       setIsLoading(false);
     }
@@ -59,15 +84,19 @@ const OllamaAssistant = () => {
           </button>
         </div>
       </form>
-      
-      {error && <div className="error-message">{error}</div>}
-      
-      {response && (
+
+      {/* Display loading indicator */}
+      {isLoading && <div className="loading-message">Thinking...</div>}
+
+      {/* Display error message if exists and not loading */}
+      {error && !isLoading && <div className="error-message">Error: {error}</div>}
+
+      {/* Display response if exists and not loading/errored */}
+      {response && !isLoading && !error && (
         <div className="response-container">
           <h3>Response:</h3>
-          <div className="response-content">
-            {response}
-          </div>
+          {/* Use preformatted text for potentially multi-line responses */}
+          <pre className="response-content">{response}</pre>
         </div>
       )}
     </div>
