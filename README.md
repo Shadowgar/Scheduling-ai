@@ -1,6 +1,6 @@
 # Employee Scheduling Application
 
-This project is a web-based application designed to help manage employee schedules, particularly aimed at environments like law enforcement or security, but adaptable to other shift-based work. It provides a user interface for supervisors to manage employees and assign shifts, and for employees to view their schedules.
+This project is a web-based application designed to help manage employee schedules, particularly aimed at environments like law enforcement or security, but adaptable to other shift-based work. It provides a user interface for supervisors to manage employees and assign shifts, and for employees to view their schedules. The application features a modern and sleek design with a consistent look and feel across all components, using a cohesive color palette, subtle box shadows, and rounded corners for a visually appealing experience.
 
 While the initial concept involved direct AI integration for schedule optimization (as reflected in earlier descriptions), the current implementation focuses on providing a robust manual scheduling interface with role-based access control. Future development could integrate AI features for suggestion or automation.
 
@@ -199,4 +199,10 @@ This project is likely licensed under the MIT License (verify `LICENSE` file).
 -   React development team and community.
 -   Contributors to Flask extensions (SQLAlchemy, Migrate, JWT-Extended, CORS).
 -   PostgreSQL development team.
+
+## Security Considerations
+
+This project uses JWT for authentication. Ensure that the `JWT_SECRET_KEY` environment variable is set to a strong, randomly generated value in production.
+
+**Important:** Avoid committing sensitive information (e.g., API keys, database passwords) directly to the repository. Use environment variables and secure configuration practices.
 ```
