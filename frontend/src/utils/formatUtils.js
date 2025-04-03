@@ -26,7 +26,7 @@ export const formatShiftDisplay = (shift) => {
                 hour: 'numeric',
                 // minute: '2-digit', // Omit minutes if they are :00
                 hour12: true
-            }).toLowerCase().replace(':00', ''); // Remove :00
+            }).toLowerCase().replace(':00', '').replace(' am', 'a').replace(' pm', 'p'); // Remove :00
         };
         return `${formatTime(start)}-${formatTime(end)}`;
 

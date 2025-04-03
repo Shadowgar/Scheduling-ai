@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { BrowserRouter as Router, Route, Routes, Navigate, useNavigate } from 'react-router-dom';
 import ScheduleCalendar from './components/ScheduleCalendar';
 import EmployeeManager from './components/EmployeeManager';
@@ -162,9 +164,11 @@ function App() {
     };
 
     return (
-        <Router>
-            <AppContent />
-        </Router>
+        <DndProvider backend={HTML5Backend}>
+            <Router>
+                <AppContent />
+            </Router>
+        </DndProvider>
     );
 }
 

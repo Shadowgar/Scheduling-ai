@@ -129,7 +129,7 @@ const CalendarGrid = ({
                   title={titleText}
                 >
                   {/* Top part: Main shift display (code/time) */}
-                  <div className={`grid-cell shift-cell`} style={{ border: 'none', flexShrink: 0, fontWeight: 'bold' }} >
+                  <div className={`grid-cell shift-cell`} style={{ border: 'none', flexShrink: 0, fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} >
                     {formatShiftDisplay(shift)}
                   </div>
                   {/* Bottom part: Directly display cell_text */}
