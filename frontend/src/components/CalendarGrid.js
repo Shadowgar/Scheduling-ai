@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
+import { useDrag, useDrop } from 'react-dnd';
 import { getDayName, formatDateKey, getWeekParity } from '../utils/dateUtils';
 import { roleOrder, formatShiftDisplay } from '../utils/formatUtils';
 
@@ -21,6 +22,69 @@ const CalendarGrid = ({
 
   let currentGridRow = HEADER_ROW_COUNT + 1;
   let previousRoleGroup = null;
+
+const ShiftCell = ({ employee, date, shift, userAccessRole, handleCellClick }) => {
+    const [{ isDragging }, drag] = useDrag(() => ({
+      type: 'shift',
+      item: { employee, date, shift, userAccessRole },
+      collect: (monitor) => ({
+        isDragging: monitor.isDragging()
+      }),
+    }), [employee, date, shift, userAccessRole]);
+
+    // --- Cell Styling Classes ---
+    const weekParity = getWeekParity(date, firstDayOfMonth);
+    const weekColorClass = `week-color-${weekParity}`;
+    const isToday = formatDateKey(date) === todayDateStr;
+    const todayClass = isToday ? 'today-highlight' : '';
+    // Make cell clickable only for supervisors
+    const clickableClass = userAccessRole === 'supervisor' ? 'clickable-cell' : '';
+
+    // --- Tooltip Text ---
+    const titleText = shift?.notes && shift.notes.trim().length > 0
+      ? `Notes: ${shift.notes}` + (shift?.cell_text ? `\nCell: ${shift.cell_text}` : '')
+      : shift?.cell_text
+        ? `Cell: ${shift.cell_text}`
+        : (userAccessRole === 'supervisor' ? `Assign shift for ${employee.name} on ${formatDateKey(date)}` : `${employee.name} - ${formatDateKey(date)}`);
+
+    // --- Check for Notes Indicator ---
+    const hasNotes = shift?.notes && shift.notes.trim().length > 0;
+
+    return (
+      <div
+        key={`cell-group-${employee.id}-${formatDateKey(date)}`}
+        ref={drag}
+        className={`grid-cell-group ${weekColorClass} ${todayClass} ${clickableClass}`}
+        style={{
+          gridRow: 'auto', // Let grid handle row placement
+          gridColumn: 'auto', // Let grid handle column placement
+          display: 'flex', flexDirection: 'column',
+          justifyContent: 'center', alignItems: 'center',
+          padding: '1px 2px',
+          borderRight: '1px solid #eee', borderBottom: '1px solid #eee',
+          overflow: 'hidden',
+          lineHeight: '1.1', fontSize: '0.8em',
+          position: 'relative',
+          textAlign: 'center',
+          opacity: isDragging ? 0.4 : 1,
+          cursor: userAccessRole === 'supervisor' ? 'move' : 'pointer',
+        }}
+        onClick={() => handleCellClick(employee, date, shift)}
+        title={titleText}
+      >
+        {/* Top part: Main shift display (code/time) */}
+        <div className={`grid-cell shift-cell`} style={{ border: 'none', flexShrink: 0, fontWeight: 'bold' }} >
+          {formatShiftDisplay(shift)}
+        </div>
+        {/* Bottom part: Directly display cell_text */}
+        <div className={`grid-cell cell-text-display`} style={{ border: 'none', flexShrink: 0 }} >
+          {shift?.cell_text || ''}
+        </div>
+        {/* *** ADD NOTE INDICATOR conditionally *** */}
+        {hasNotes && <div className="note-indicator"></div>}
+      </div>
+    );
+  };
 
   return (
     <div className="calendar-grid" style={{ gridTemplateColumns: gridTemplateColumns }}>
@@ -90,55 +154,15 @@ const CalendarGrid = ({
               const shift = shiftLookup.get(employee.id)?.get(formatDateKey(date)); // Get shift data
               const currentDataColumn = DATE_START_COL + index; // Calculate current column
 
-              // --- Cell Styling Classes ---
-              const weekParity = getWeekParity(date, firstDayOfMonth);
-              const weekColorClass = `week-color-${weekParity}`;
-              const isToday = formatDateKey(date) === todayDateStr;
-              const todayClass = isToday ? 'today-highlight' : '';
-              // Make cell clickable only for supervisors
-              const clickableClass = userAccessRole === 'supervisor' ? 'clickable-cell' : '';
-
-              // --- Tooltip Text ---
-              const titleText = shift?.notes && shift.notes.trim().length > 0
-                ? `Notes: ${shift.notes}` + (shift?.cell_text ? `\nCell: ${shift.cell_text}` : '')
-                : shift?.cell_text
-                  ? `Cell: ${shift.cell_text}`
-                  : (userAccessRole === 'supervisor' ? `Assign shift for ${employee.name} on ${formatDateKey(date)}` : `${employee.name} - ${formatDateKey(date)}`);
-
-              // --- Check for Notes Indicator ---
-              const hasNotes = shift?.notes && shift.notes.trim().length > 0;
-
-              // --- Render the Cell Group ---
               return (
-                <div
-                  key={`cell-group-${employee.id}-${index}`}
-                  className={`grid-cell-group ${weekColorClass} ${todayClass} ${clickableClass}`}
-                  style={{
-                    gridRow: `${shiftDataRow} / span ${ROWS_PER_EMPLOYEE}`,
-                    gridColumn: currentDataColumn,
-                    display: 'flex', flexDirection: 'column',
-                    justifyContent: 'center', alignItems: 'center',
-                    padding: '1px 2px',
-                    borderRight: '1px solid #eee', borderBottom: '1px solid #eee',
-                    overflow: 'hidden',
-                    lineHeight: '1.1', fontSize: '0.8em',
-                    position: 'relative',
-                    textAlign: 'center',
-                  }}
-                  onClick={() => handleCellClick(employee, date, shift)}
-                  title={titleText}
-                >
-                  {/* Top part: Main shift display (code/time) */}
-                  <div className={`grid-cell shift-cell`} style={{ border: 'none', flexShrink: 0, fontWeight: 'bold' }} >
-                    {formatShiftDisplay(shift)}
-                  </div>
-                  {/* Bottom part: Directly display cell_text */}
-                  <div className={`grid-cell cell-text-display`} style={{ border: 'none', flexShrink: 0 }} >
-                    {shift?.cell_text || ''}
-                  </div>
-                  {/* *** ADD NOTE INDICATOR conditionally *** */}
-                  {hasNotes && <div className="note-indicator"></div>}
-                </div>
+                <ShiftCell
+                  key={`cell-group-${employee.id}-${formatDateKey(date)}`}
+                  employee={employee}
+                  date={date}
+                  shift={shift}
+                  userAccessRole={userAccessRole}
+                  handleCellClick={handleCellClick}
+                />
               );
             })}
           </React.Fragment>

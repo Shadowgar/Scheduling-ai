@@ -140,16 +140,16 @@ function App() {
                             }
                         />
                         <Route
-    path="/assistant"
-    element={
-        <ProtectedRoute
-            isAllowed={isAuthenticated}
-            redirectTo="/login"
-        >
-            <OllamaAssistant />
-        </ProtectedRoute>
-    }
-/>
+                            path="/assistant"
+                            element={
+                                <ProtectedRoute
+                                    isAllowed={isAuthenticated}
+                                    redirectTo="/login"
+                                >
+                                    <OllamaAssistant />
+                                </ProtectedRoute>
+                            }
+                        />
                         <Route
                             path="/"
                             element={<Navigate to={isAuthenticated ? "/schedule" : "/login"} replace />}

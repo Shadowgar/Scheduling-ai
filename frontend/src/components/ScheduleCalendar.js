@@ -3,10 +3,12 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import './ScheduleCalendar.css'; // Make sure styles for note-indicator are here
 import ShiftModal from './ShiftModal'; // Ensure ShiftModal is imported
 import { formatDateKey } from '../utils/dateUtils';
-import { roleOrder } from '../utils/formatUtils';
+import { roleOrder, formatShiftDisplay } from '../utils/formatUtils';
 import { fetchShiftData, fetchEmployeeData } from '../utils/fetchUtils';
 import CalendarHeader from './CalendarHeader';
 import CalendarGrid from './CalendarGrid';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 
 // Use job title strings for sorting order (lowercase)
 const todayDateStr = formatDateKey(new Date());
@@ -109,11 +111,6 @@ const ScheduleCalendar = ({ currentUser }) => {
     // Opens the modal with data for the clicked cell
     const handleCellClick = (employee, date, shift) => {
         console.log(`Cell Clicked: Emp ${employee?.id}, Date ${formatDateKey(date)}, Shift Exists: ${!!shift}`);
-        // Only allow opening modal if userAccessRole !== 'supervisor'
-        if (userAccessRole !== 'supervisor') {
-            console.log("Non-supervisor clicked cell, modal blocked.");
-            return; // Do nothing if not a supervisor
-        }
 
         // Prepare data payload for the modal
         const cellPayload = {
@@ -150,15 +147,16 @@ const ScheduleCalendar = ({ currentUser }) => {
     console.log(`Rendering grid. User Role:`, userAccessRole);
 
     return (
-        <div className="schedule-calendar-container" style={{ position: 'relative' }}>
-            <div className="schedule-calendar">
-                {/* Header with Month/Year and Navigation Buttons */}
-                <CalendarHeader
-                    monthName={monthName}
-                    year={year}
-                    goToPreviousMonth={goToPreviousMonth}
-                    goToNextMonth={goToNextMonth}
-                />
+        <DndProvider backend={HTML5Backend}>
+            <div className="schedule-calendar-container" style={{ position: 'relative' }}>
+                <div className="schedule-calendar">
+                    {/* Header with Month/Year and Navigation Buttons */}
+                    <CalendarHeader
+                        monthName={monthName}
+                        year={year}
+                        goToPreviousMonth={goToPreviousMonth}
+                        goToNextMonth={goToNextMonth}
+                    />
 
                 {/* Optional Inline Error (if shifts failed but employees loaded) */}
                 {error && employees.length > 0 && !isModalOpen && (
@@ -177,19 +175,9 @@ const ScheduleCalendar = ({ currentUser }) => {
                     firstDayOfMonth={firstDayOfMonth}
                     todayDateStr={todayDateStr}
                 />
-            </div> {/* End schedule-calendar */}
-
-            {/* --- Modal Rendering --- */}
-            {/* Render ShiftModal only if conditions are met */}
-            {isModalOpen && selectedCellData && userAccessRole === 'supervisor' && (
-                <ShiftModal
-                    isOpen={isModalOpen}
-                    onClose={handleCloseModal}
-                    cellData={selectedCellData} // Pass the prepared data for the modal
-                    onShiftUpdate={handleShiftUpdate} // Pass the callback for refreshing data
-                />
-            )}
-        </div> // End schedule-calendar-container
+            </div>
+        </div>
+        </DndProvider>
     );
 };
 
