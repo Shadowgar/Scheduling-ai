@@ -8,6 +8,7 @@
 ### Core System Enhancement
 - [x] Design and implement employee preference data model
 - [x] Create UI for capturing employee shift preferences
+- [x] Develop quick fill buttons in ShiftModal
 - [ ] Develop drag-and-drop shift assignment functionality
 
 ### AI Integration

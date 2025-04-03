@@ -173,6 +173,46 @@ const ShiftModal = ({ isOpen, onClose, cellData, onShiftUpdate }) => {
         }
     };
 
+    const handleQuickFill = (shiftType) => {
+        const date = cellData.date;
+        let start, end;
+
+        if (shiftType === 'morning') {
+            start = new Date(date);
+            start.setHours(7, 0, 0, 0);
+            end = new Date(date);
+            end.setHours(15, 0, 0, 0);
+        } else if (shiftType === 'afternoon') {
+            start = new Date(date);
+            start.setHours(15, 0, 0, 0);
+            end = new Date(date);
+            end.setHours(23, 0, 0, 0);
+        } else if (shiftType === 'night') {
+            start = new Date(date);
+            start.setHours(23, 0, 0, 0);
+            end = new Date(date);
+            end.setHours(7, 0, 0, 0);
+            end.setDate(end.getDate() + 1); // next day
+        }
+
+        const formatDateTimeLocal = (d) => {
+            if (!d) return '';
+            try {
+                const dateObj = new Date(d);
+                // Adjust for timezone offset to display correctly in local time input
+                // This ensures the time shown matches the user's local timezone interpretation of the UTC time
+                dateObj.setMinutes(dateObj.getMinutes() - dateObj.getTimezoneOffset());
+                return dateObj.toISOString().slice(0, 16);
+            } catch (e) {
+                console.error("Error formatting date for input:", e);
+                return ''; // Return empty string on error
+            }
+        };
+
+        setStartTime(formatDateTimeLocal(start));
+        setEndTime(formatDateTimeLocal(end));
+    };
+
     // --- Handle Shift Deletion ---
     const handleDelete = async () => {
          if (!isEditMode) return; // Should not happen, but safeguard
@@ -331,6 +371,16 @@ const ShiftModal = ({ isOpen, onClose, cellData, onShiftUpdate }) => {
                         <button type="button" className="cancel-button" onClick={onClose} disabled={isSaving}>
                             Cancel
                         </button>
+                    </div>
+
+                     {/* Quick Fill Buttons */}
+                     <div className="form-group">
+                        <label>Quick Fill:</label>
+                        <div className="quick-fill-buttons">
+                            <button type="button" onClick={() => handleQuickFill('morning')} disabled={isSaving}>Morning (7 AM - 3 PM)</button>
+                            <button type="button" onClick={() => handleQuickFill('afternoon')} disabled={isSaving}>Afternoon (3 PM - 11 PM)</button>
+                            <button type="button" onClick={() => handleQuickFill('night')} disabled={isSaving}>Night (11 PM - 7 AM)</button>
+                        </div>
                     </div>
                 </form>
             </div>
