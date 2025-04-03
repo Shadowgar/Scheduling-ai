@@ -1,5 +1,10 @@
 /* frontend/src/components/ShiftModal.css */
 
+/* General Styling */
+body {
+    font-family: 'Roboto', sans-serif;
+}
+
 .modal-overlay {
     position: fixed; /* Stay in place */
     top: 0;
@@ -14,12 +19,12 @@
   }
   
   .modal-content {
-    background-color: #fff;
+    background-color: #f9f9f9;
     padding: 20px 30px;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
     width: 90%;
-    max-width: 500px; /* Max width */
+    max-width: 600px; /* Increased max width */
     position: relative;
     animation: slide-down 0.3s ease-out; /* Simple animation */
   }
@@ -50,18 +55,23 @@
     font-size: 1.4em;
   }
   
-  .close-button {
+ .modal-close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
     background: none;
     border: none;
-    font-size: 1.8em;
+    font-size: 1.5em;
     cursor: pointer;
     color: #aaa;
-    padding: 0 5px;
+    padding: 0;
     line-height: 1;
-  }
-  .close-button:hover {
-      color: #333;
-  }
+    transition: color 0.2s ease;
+}
+
+.modal-close-button:hover {
+    color: #333;
+}
   
   .modal-body p {
       margin: 5px 0 15px;
@@ -77,19 +87,30 @@
   }
   .form-group label {
       display: block;
-      margin-bottom: 5px;
-      font-weight: bold;
-      font-size: 0.9em;
-      color: #555;
+      margin-bottom: 8px;
+      font-weight: 500;
+      font-size: 1.1em;
+      color: #333;
   }
   .form-group input[type="datetime-local"],
-  .form-group textarea {
+  .form-group textarea,
+  .form-group select {
       width: 100%;
-      padding: 8px 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+      padding: 10px 12px;
+      border: none;
+      border-radius: 8px;
       box-sizing: border-box; /* Include padding in width */
       font-size: 1em;
+      background-color: #fff;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      transition: box-shadow 0.2s ease;
+  }
+
+  .form-group input[type="datetime-local"]:focus,
+  .form-group textarea:focus,
+  .form-group select:focus {
+      box-shadow: 0 3px 7px rgba(0, 0, 0, 0.1);
+      outline: none; /* Remove the outline on focus */
   }
   .form-group textarea {
       resize: vertical; /* Allow vertical resize */
@@ -101,18 +122,19 @@
       padding-top: 15px;
       border-top: 1px solid #eee;
       display: flex;
-      justify-content: flex-end; /* Align buttons to the right */
+      justify-content: center; /* Align buttons to the center */
       gap: 10px; /* Space between buttons */
   }
   
   .modal-actions button {
-      padding: 8px 15px;
+      padding: 10px 20px;
       border: none;
-      border-radius: 4px;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 0.9em;
-      font-weight: bold;
-      transition: background-color 0.2s ease, box-shadow 0.2s ease;
+      font-size: 1em;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   }
   
   .modal-actions button:disabled {
@@ -125,27 +147,30 @@
       background-color: #28a745; /* Green */
       color: white;
   }
+  
   .save-button:hover:not(:disabled) {
       background-color: #218838;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      box-shadow: 0 3px 7px rgba(0, 0, 0, 0.2);
   }
   
   .delete-button {
       background-color: #dc3545; /* Red */
       color: white;
   }
+  
   .delete-button:hover:not(:disabled) {
       background-color: #c82333;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      box-shadow: 0 3px 7px rgba(0, 0, 0, 0.2);
   }
   
   .cancel-button {
       background-color: #6c757d; /* Gray */
       color: white;
   }
+  
   .cancel-button:hover:not(:disabled) {
       background-color: #5a6268;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      box-shadow: 0 3px 7px rgba(0, 0, 0, 0.2);
   }
   
   /* Style for error messages inside the modal */
@@ -175,3 +200,57 @@
        font-size: 0.9em;
        padding: 2px 5px;
    }
+
+   /* Add to ShiftModal.css */
+.quick-fill-section {
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+.quick-fill-section h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1rem;
+}
+
+.quick-fill-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.quick-fill-button {
+    flex: 1;
+    min-width: 120px;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #f8f8f8;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.quick-fill-button:hover:not(:disabled) {
+    background-color: #eee;
+}
+
+.quick-fill-button.morning {
+    border-left: 4px solid #ffc107; /* Yellow for morning */
+}
+
+.quick-fill-button.afternoon {
+    border-left: 4px solid #28a745; /* Green for afternoon */
+}
+
+.quick-fill-button.night {
+    border-left: 4px solid #6610f2; /* Purple for night */
+}
+
+.multi-selection-note {
+    margin-top: 5px;
+    color: #666;
+    font-style: italic;
+}

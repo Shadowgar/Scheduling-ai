@@ -1,5 +1,6 @@
 // frontend/src/components/Login.js
 import React, { useState } from 'react';
+import './Login.css';
 // No navigate needed here anymore, App.js handles it
 
 // Accept onLoginSuccess prop from App.js
@@ -81,11 +82,11 @@ function Login({ onLoginSuccess }) {
 
     // --- JSX remains the same ---
     return (
-        <div className="login-container" style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
+        <div className="login-container">
             <h2>Login</h2>
             <form onSubmit={handleSubmit}>
-                <div style={{ marginBottom: '15px' }}>
-                    <label htmlFor="email" style={{ display: 'block', marginBottom: '5px' }}>Email:</label>
+                <div className="form-group">
+                    <label htmlFor="email">Email:</label>
                     <input
                         type="email"
                         id="email"
@@ -93,11 +94,11 @@ function Login({ onLoginSuccess }) {
                         onChange={(e) => setEmail(e.target.value)}
                         required
                         autoComplete="email"
-                        style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                        className="form-control"
                     />
                 </div>
-                <div style={{ marginBottom: '15px' }}>
-                    <label htmlFor="password" style={{ display: 'block', marginBottom: '5px' }}>Password:</label>
+                <div className="form-group">
+                    <label htmlFor="password">Password:</label>
                     <input
                         type="password"
                         id="password"
@@ -105,14 +106,14 @@ function Login({ onLoginSuccess }) {
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         autoComplete="current-password"
-                        style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                        className="form-control"
                     />
                 </div>
-                {error && <p style={{ color: 'red', marginBottom: '15px' }}>{error}</p>}
+                {error && <p className="error-message">{error}</p>}
                 <button
                     type="submit"
                     disabled={isLoading}
-                    style={{ width: '100%', padding: '10px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    className="login-button"
                 >
                     {isLoading ? 'Logging in...' : 'Login'}
                 </button>

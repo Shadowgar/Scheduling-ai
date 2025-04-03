@@ -4,9 +4,12 @@
     display: flex;
     justify-content: space-between; /* Pushes links left, auth right */
     align-items: center;
-    background-color: #333; /* Dark background */
-    padding: 10px 20px;
+    background-color: #3498db; /* Modern background */
+    padding: 15px 30px;
     color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    font-family: 'Roboto', sans-serif;
   }
   
   .main-navbar a,
@@ -14,14 +17,16 @@
     color: white;
     text-decoration: none;
     margin: 0 10px; /* Spacing between links */
-    padding: 5px 10px;
-    border-radius: 4px;
-    transition: background-color 0.2s ease;
+    padding: 8px 15px;
+    border-radius: 8px;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
   
   .main-navbar a:hover,
   .main-navbar .nav-brand:hover {
-    background-color: #555; /* Darker hover */
+    background-color: #2980b9; /* Darker hover */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
   
   .nav-links {
@@ -40,18 +45,20 @@
   }
   
   .logout-button {
-    background-color: #dc3545; /* Red for logout */
+    background-color: #e74c3c; /* Red for logout */
     color: white;
     border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
+    padding: 8px 15px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 0.9em;
-    transition: background-color 0.2s ease;
+    font-size: 1em;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
   
   .logout-button:hover {
-    background-color: #c82333; /* Darker red on hover */
+    background-color: #c0392b; /* Darker red on hover */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
   
   /* Add more specific styles as needed */
