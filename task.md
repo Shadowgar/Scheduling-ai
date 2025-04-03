@@ -6,10 +6,8 @@
 ## Active Tasks
 
 ### Core System Enhancement
-- [ ] Design and implement employee preference data model
-- [ ] Create UI for capturing employee shift preferences
-- [ ] Enhance schedule display with preference indicators
-- [ ] Implement role-based editing permissions
+- [x] Design and implement employee preference data model
+- [x] Create UI for capturing employee shift preferences
 - [ ] Develop drag-and-drop shift assignment functionality
 
 ### AI Integration

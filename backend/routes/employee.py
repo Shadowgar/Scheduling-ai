@@ -57,7 +57,12 @@ def handle_employees():
                 seniority_level=data.get('seniority_level'),
                 max_hours_per_week=data.get('max_hours_per_week'),
                 min_hours_per_week=data.get('min_hours_per_week'),
-                show_on_schedule=str(show_on_schedule_val).lower() in ['true', '1', 'yes']
+                show_on_schedule=str(show_on_schedule_val).lower() in ['true', '1', 'yes'],
+                preferred_shifts=data.get('preferred_shifts'),
+                preferred_days=data.get('preferred_days'),
+                days_off=[datetime.strptime(d, '%Y-%m-%d').date() for d in data.get('days_off', [])] if data.get('days_off') else None,
+                max_hours=data.get('max_hours'),
+                max_shifts_in_a_row=data.get('max_shifts_in_a_row')
             )
             new_employee.set_password(data['password'])
             db.session.add(new_employee)
@@ -150,6 +155,15 @@ def handle_employee(employee_id):
                 if 'show_on_schedule' in data:
                      new_show = str(data['show_on_schedule']).lower() in ['true', '1', 'yes']
                      if employee.show_on_schedule != new_show: employee.show_on_schedule = new_show; updated = True
+                if 'preferred_shifts' in data and employee.preferred_shifts != data.get('preferred_shifts'): employee.preferred_shifts = data.get('preferred_shifts'); updated = True
+                if 'preferred_days' in data and employee.preferred_days != data.get('preferred_days'): employee.preferred_days = data.get('preferred_days'); updated = True
+                if 'days_off' in data:
+                    try:
+                        new_days_off = [datetime.strptime(d, '%Y-%m-%d').date() for d in data.get('days_off', [])] if data.get('days_off') else None
+                        if employee.days_off != new_days_off: employee.days_off = new_days_off; updated = True
+                    except (ValueError, TypeError): return jsonify({"error": "Invalid days_off format (YYYY-MM-DD)"}), 400
+                if 'max_hours' in data and employee.max_hours != data.get('max_hours'): employee.max_hours = data.get('max_hours'); updated = True
+                if 'max_shifts_in_a_row' in data and employee.max_shifts_in_a_row != data.get('max_shifts_in_a_row'): employee.max_shifts_in_a_row = data.get('max_shifts_in_a_row'); updated = True
 
             if updated:
                 db.session.commit()

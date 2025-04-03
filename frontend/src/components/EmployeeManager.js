@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import './EmployeeManager.css'; // Make sure you have this CSS file
+import 'react-datepicker/dist/react-datepicker.css';
+import './EmployeeManager.css';
 
 const EmployeeManager = () => {
     const [employees, setEmployees] = useState([]);
@@ -19,7 +20,7 @@ const EmployeeManager = () => {
             email: '',
             phone: '',
             job_title: 'Employee', // Default job title
-            access_role: 'member', // *** CORRECTED: Default access role (lowercase) ***
+            access_role: 'member', // Default access role (lowercase)
             hire_date: new Date().toISOString().split('T')[0], // Default to today
             end_date: '', // Optional end date
             status: 'active', // Default status
@@ -28,6 +29,11 @@ const EmployeeManager = () => {
             min_hours_per_week: '',
             show_on_schedule: true, // Default to true
             password: '', // Required only for adding
+            preferred_shifts: [],
+            preferred_days: [],
+            days_off: '', // Changed to string for simpler handling
+            max_hours: '',
+            max_shifts_in_a_row: '',
         };
     }
 
@@ -64,7 +70,6 @@ const EmployeeManager = () => {
 
             const data = await response.json();
             console.log("Admin employees received:", data);
-            // Data contains job_title and access_role (lowercase string)
             setEmployees(data.sort((a, b) => a.name.localeCompare(b.name)));
         } catch (error) {
             console.error("Error fetching admin employees:", error);
@@ -98,23 +103,28 @@ const EmployeeManager = () => {
     };
 
     const handleShowEditForm = (employee) => {
-        console.log("Editing employee:", employee); // Should have job_title, access_role
+        console.log("Editing employee:", employee);
         setEditingEmployee(employee);
+        
         // Pre-fill form data from the employee object
         setFormData({
             name: employee.name || '',
             email: employee.email || '',
             phone: employee.phone || '',
             job_title: employee.job_title || 'Employee',
-            // *** CORRECTED: Use lowercase default if missing ***
             access_role: employee.access_role || 'member',
-            hire_date: employee.hire_date || '', // Should be YYYY-MM-DD from API
-            end_date: employee.end_date || '', // Should be YYYY-MM-DD from API or null
+            hire_date: employee.hire_date || '',
+            end_date: employee.end_date || '',
             status: employee.status || 'active',
             seniority_level: employee.seniority_level !== null ? String(employee.seniority_level) : '',
             max_hours_per_week: employee.max_hours_per_week !== null ? String(employee.max_hours_per_week) : '',
             min_hours_per_week: employee.min_hours_per_week !== null ? String(employee.min_hours_per_week) : '',
             show_on_schedule: employee.show_on_schedule !== undefined ? employee.show_on_schedule : true,
+            preferred_shifts: employee.preferred_shifts || [],
+            preferred_days: employee.preferred_days || [],
+            days_off: employee.days_off || '', // Simplified to string
+            max_hours: employee.max_hours !== null ? String(employee.max_hours) : '',
+            max_shifts_in_a_row: employee.max_shifts_in_a_row !== null ? String(employee.max_shifts_in_a_row) : '',
             password: '', // Clear password field for edits
         });
         setShowForm(true);
@@ -146,21 +156,21 @@ const EmployeeManager = () => {
         const method = editingEmployee ? 'PUT' : 'POST';
 
         // Prepare data, ensuring access_role is sent as lowercase string
-        // Convert numeric fields correctly, handle null for optional ones
         const dataToSend = {
             ...formData,
-            // access_role is already lowercase from state/select
-            access_role: formData.access_role,
             // Convert potentially empty strings for numeric fields to null or integer
             seniority_level: formData.seniority_level ? parseInt(formData.seniority_level, 10) : null,
             max_hours_per_week: formData.max_hours_per_week ? parseInt(formData.max_hours_per_week, 10) : null,
             min_hours_per_week: formData.min_hours_per_week ? parseInt(formData.min_hours_per_week, 10) : null,
-            // Send end_date as null if empty string
             end_date: formData.end_date || null,
-            // show_on_schedule is already boolean from checkbox
+            preferred_shifts: formData.preferred_shifts || [],
+            preferred_days: formData.preferred_days || [],
+            days_off: formData.days_off || null,
+            max_hours: formData.max_hours ? parseInt(formData.max_hours, 10) : null,
+            max_shifts_in_a_row: formData.max_shifts_in_a_row ? parseInt(formData.max_shifts_in_a_row, 10) : null,
         };
 
-        // Validate numeric conversions (optional but good practice)
+        // Validate numeric conversions
         if (formData.seniority_level && isNaN(dataToSend.seniority_level)) {
              setError("Seniority Level must be a valid number."); setIsSubmitting(false); return;
         }
@@ -170,7 +180,6 @@ const EmployeeManager = () => {
         if (formData.min_hours_per_week && isNaN(dataToSend.min_hours_per_week)) {
              setError("Min Hours/Week must be a valid number."); setIsSubmitting(false); return;
         }
-
 
         // Remove password if editing and field is empty
         if (method === 'PUT' && !dataToSend.password) {
@@ -199,7 +208,6 @@ const EmployeeManager = () => {
 
             if (!response.ok) {
                  console.error("API Error Response:", result);
-                 // Use the error message from the backend response if available
                  throw new Error(result.error || `Request failed with status ${response.status}`);
             }
 
@@ -209,7 +217,6 @@ const EmployeeManager = () => {
 
         } catch (err) {
             console.error(`Error ${editingEmployee ? 'updating' : 'adding'} employee:`, err);
-            // Display the caught error message
             setError(err.message || `Failed to ${editingEmployee ? 'update' : 'add'} employee.`);
         } finally {
             setIsSubmitting(false);
@@ -259,14 +266,12 @@ const EmployeeManager = () => {
         }
     };
 
-
     // --- Render Logic ---
     // Show loading indicator only on initial load
     if (loading && employees.length === 0) return <div className="loading-container">Loading Employees...</div>;
 
     // Show primary error if loading failed and no employees are loaded (and form isn't shown)
     if (error && employees.length === 0 && !showForm) return <div className="error error-message">Error: {error} <button onClick={fetchEmployees}>Retry</button></div>;
-
 
     return (
         <div className="employee-manager">
@@ -276,7 +281,6 @@ const EmployeeManager = () => {
              {error && !showForm && employees.length > 0 && (
                 <div className="error error-message error-inline">{error}</div>
              )}
-
 
             {!showForm && (
                 <button onClick={handleShowAddForm} className="add-button">
@@ -307,12 +311,10 @@ const EmployeeManager = () => {
                                 <option value="Supervisor">Supervisor</option>
                                 <option value="Police">Police</option>
                                 <option value="Security">Security</option>
-                                {/* Add other valid job titles as needed */}
                             </select>
                         </div>
                         <div className="form-group">
                             <label htmlFor="access_role">Access Role:</label>
-                            {/* Use lowercase values */}
                             <select id="access_role" name="access_role" value={formData.access_role} onChange={handleInputChange} required disabled={isSubmitting}>
                                 <option value="member">Member</option>
                                 <option value="supervisor">Supervisor</option>
@@ -328,7 +330,6 @@ const EmployeeManager = () => {
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
                                 <option value="on_leave">On Leave</option>
-                                {/* Avoid showing 'terminated' as an option to set */}
                             </select>
                         </div>
                         <div className="form-group checkbox-group">
@@ -363,6 +364,63 @@ const EmployeeManager = () => {
                             <label htmlFor="min_hours_per_week">Min Hours/Week (Optional):</label>
                             <input type="number" id="min_hours_per_week" name="min_hours_per_week" value={formData.min_hours_per_week || ''} onChange={handleInputChange} min="0" step="1" disabled={isSubmitting}/>
                         </div>
+                        
+                        {/* Simplified preferred shifts selection */}
+                        <div className="form-group">
+                            <label htmlFor="preferred_shifts">Preferred Shifts (comma-separated):</label>
+                            <input 
+                                type="text" 
+                                id="preferred_shifts" 
+                                name="preferred_shifts"
+                                value={Array.isArray(formData.preferred_shifts) ? formData.preferred_shifts.join(', ') : formData.preferred_shifts || ''}
+                                onChange={(e) => {
+                                    const shiftsArray = e.target.value.split(',').map(s => s.trim()).filter(s => s);
+                                    setFormData(prev => ({ ...prev, preferred_shifts: shiftsArray }));
+                                }}
+                                placeholder="Morning, Afternoon, Evening, etc."
+                                disabled={isSubmitting}
+                            />
+                        </div>
+                        
+                        {/* Simplified preferred days selection */}
+                        <div className="form-group">
+                            <label htmlFor="preferred_days">Preferred Days (comma-separated):</label>
+                            <input 
+                                type="text" 
+                                id="preferred_days" 
+                                name="preferred_days"
+                                value={Array.isArray(formData.preferred_days) ? formData.preferred_days.join(', ') : formData.preferred_days || ''}
+                                onChange={(e) => {
+                                    const daysArray = e.target.value.split(',').map(d => d.trim()).filter(d => d);
+                                    setFormData(prev => ({ ...prev, preferred_days: daysArray }));
+                                }}
+                                placeholder="Monday, Tuesday, etc."
+                                disabled={isSubmitting}
+                            />
+                        </div>
+                        
+                        {/* Simplified days off */}
+                        <div className="form-group">
+                           <label htmlFor="days_off">Scheduling Preferences/Days Off:</label>
+                           <textarea
+                            id="days_off"
+                            name="days_off"
+                            value={formData.days_off || ''}
+                            onChange={handleInputChange}
+                            placeholder="Examples: 'Prefers weekends off', 'Unavailable 1st week of July', 'Cannot work Mondays'"
+                            rows={3}
+                            disabled={isSubmitting}
+                          />
+                         <small>Enter natural language preferences that the AI can use for scheduling.</small>
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="max_hours">Max Hours (Optional):</label>
+                            <input type="number" id="max_hours" name="max_hours" value={formData.max_hours || ''} onChange={handleInputChange} min="0" step="1" disabled={isSubmitting}/>
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="max_shifts_in_a_row">Max Shifts in a Row (Optional):</label>
+                            <input type="number" id="max_shifts_in_a_row" name="max_shifts_in_a_row" value={formData.max_shifts_in_a_row || ''} onChange={handleInputChange} min="0" step="1" disabled={isSubmitting}/>
+                        </div>
 
                         {/* --- Form Actions --- */}
                         <div className="form-actions">
@@ -377,7 +435,6 @@ const EmployeeManager = () => {
                 </div>
             )}
 
-
             {/* --- Employee List --- */}
             {!showForm && (
                  <table className="employee-table">
@@ -385,8 +442,8 @@ const EmployeeManager = () => {
                         <tr>
                             <th>Name</th>
                             <th>Email</th>
-                            <th>Job Title</th> {/* Display Job Title */}
-                            <th>Access Role</th> {/* Display Access Role */}
+                            <th>Job Title</th>
+                            <th>Access Role</th>
                             <th>Shows on Schedule?</th>
                             <th>Status</th>
                             <th>Actions</th>
@@ -398,8 +455,8 @@ const EmployeeManager = () => {
                             <tr key={emp.id}>
                                 <td>{emp.name}</td>
                                 <td>{emp.email}</td>
-                                <td>{emp.job_title || 'N/A'}</td> {/* Show Job Title */}
-                                <td>{emp.access_role || 'N/A'}</td> {/* Show Access Role (lowercase) */}
+                                <td>{emp.job_title || 'N/A'}</td>
+                                <td>{emp.access_role || 'N/A'}</td>
                                 <td>{emp.show_on_schedule ? 'Yes' : 'No'}</td>
                                 <td>{emp.status || 'N/A'}</td>
                                 <td className="action-buttons">

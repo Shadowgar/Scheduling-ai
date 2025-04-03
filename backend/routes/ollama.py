@@ -55,8 +55,8 @@ def query_ollama():
     current_app.logger.info(f"Generated Context: {context[:200]}...")
 
     # Construct Augmented Prompt
-    system_prompt = "You are a helpful scheduling assistant. Your goal is to answer the user's question about the work schedule based *only* on the provided context. Do not make assumptions or use external knowledge. If the context does not contain the answer, clearly state that the information is not available in the provided schedule data."
-    augmented_prompt = f"{system_prompt}\n\n{context}\n\nUser Question: {user_query}\n\nAnswer:"
+    system_prompt = "You are a helpful scheduling assistant. Your goal is to answer the user's question about the work schedule based *only* on the provided context, and taking into account employee preferences. Do not make assumptions or use external knowledge. If the context does not contain the answer, clearly state that the information is not available in the provided schedule data."
+    augmented_prompt = f"{system_prompt}\n\n{context}\n\nUser Question: {user_query}\n\nWhen generating the schedule, take into account the employee preferences.\n\nAnswer:"
 
     # Call Ollama API with Augmented Prompt
     try:

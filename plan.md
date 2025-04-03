@@ -114,7 +114,47 @@ The project will be completed in the following stages:
 
 The project is estimated to take 4-6 weeks to complete.
 
-**VII. Next Steps**
+**VII. Employee Preference Data Model Design**
 
-1.  Get user approval for the project plan.
-2.  Start implementing the supervisor interface (Stage 1).
+1.  **Identify Key Preferences:** The employee preferences to be included are: preferred shifts, preferred days, days off, maximum hours, and maximum shifts in a row.
+2.  **Data Structure:** The following columns will be added to the `Employee` model:
+    *   `preferred_shifts`: A list of preferred shift times (e.g., ["morning", "afternoon", "evening"]).
+    *   `preferred_days`: A list of preferred days of the week (e.g., ["Monday", "Tuesday", "Wednesday"]).
+    *   `days_off`: A list of specific dates the employee wants off (e.g., ["2025-04-20", "2025-05-01"]).
+    *   `max_hours`: An integer representing the maximum number of hours the employee can work per week.
+    *   `max_shifts_in_a_row`: An integer representing the maximum number of consecutive shifts the employee can work.
+3.  **Storage Location:** Employee preference data will be stored within the `Employee` model in the database.
+4.  **Backend Implementation:**
+    *   Modify the backend API to allow supervisors to set and update employee preferences via the existing employee management endpoints.
+    *   Ensure the API endpoints retrieve and return the new preference fields.
+5.  **Frontend Integration:**
+    *   Develop UI components for supervisors to manage employee preferences within the existing employee management interface.
+    *   Integrate these components with the backend API.
+
+**VIII. AI Integration**
+
+1.  **Preference Incorporation:** Modify the RAG implementation and prompt engineering to incorporate employee preferences when generating schedule suggestions.
+2.  **Constraint Handling:** Ensure the AI model respects employee preferences as constraints when creating schedules.
+3.  **Evaluation:** Evaluate the impact of employee preferences on schedule quality and fairness.
+
+**IX. Implementation Steps**
+
+1.  **Database Model:** Modify the `Employee` model in `backend/models.py` to add the new preference fields.
+2.  **API Endpoints:** Modify the API endpoints in `backend/routes/employee.py` to handle the new preference fields.
+3.  **Frontend Components:** Develop React components in `frontend/src/components/` for managing preferences within the employee management interface.
+4.  **AI Integration:** Modify the RAG and prompt engineering logic in `backend/utils/ai_utils.py` (or similar) to incorporate preferences.
+5.  **Testing:** Write unit tests for the backend and frontend components.
+
+**X. Mermaid Diagram**
+
+```mermaid
+graph LR
+    A[Employee Model] -- Stores --> B{Employee Preferences}
+    B -- Includes --> C[Preferred Shifts (list)]
+    B -- Includes --> D[Preferred Days (list)]
+    B -- Includes --> E[Days Off (list)]
+    B -- Includes --> F[Max Hours (int)]
+    B -- Includes --> G[Max Shifts in a Row (int)]
+    A -- Used by --> H{AI Model}
+    H -- Generates --> I[Schedule Suggestions]
+    I -- Respects --> B

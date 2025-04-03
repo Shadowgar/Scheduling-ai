@@ -44,6 +44,13 @@ class Employee(db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     show_on_schedule = db.Column(db.Boolean, nullable=False, default=True, server_default='true')
     
+    # Add missing columns from your database
+    preferred_shifts = db.Column(db.Text, nullable=True)
+    preferred_days = db.Column(db.Text, nullable=True)
+    days_off = db.Column(db.Text, nullable=True)
+    max_hours = db.Column(db.Integer, nullable=True)
+    max_shifts_in_a_row = db.Column(db.Integer, nullable=True)
+    
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime(timezone=True), 
                           default=lambda: datetime.now(timezone.utc), 
@@ -80,6 +87,11 @@ class Employee(db.Model):
             'max_hours_per_week': self.max_hours_per_week,
             'min_hours_per_week': self.min_hours_per_week,
             'show_on_schedule': self.show_on_schedule,
+            'preferred_shifts': self.preferred_shifts,
+            'preferred_days': self.preferred_days,
+            'days_off': self.days_off,
+            'max_hours': self.max_hours,
+            'max_shifts_in_a_row': self.max_shifts_in_a_row,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }

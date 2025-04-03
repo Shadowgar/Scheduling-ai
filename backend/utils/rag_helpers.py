@@ -83,7 +83,7 @@ def get_shifts_for_context(target_date, target_shift_type=None):
                  query_builder = query_builder.filter(Shift.start_time >= night_start)
 
         relevant_shifts = query_builder.join(Employee, isouter=True).options(joinedload(Shift.employee)).order_by(Shift.start_time).all()
-
+        
         if relevant_shifts:
             context_lines = [f"Context: Schedule Information for {target_date.strftime('%B %d, %Y')}{f' ({target_shift_type} shifts)' if target_shift_type else ''}:"]
             for shift in relevant_shifts:
@@ -91,6 +91,28 @@ def get_shifts_for_context(target_date, target_shift_type=None):
                 start_str = shift.start_time.strftime('%I:%M %p %Z')
                 end_str = shift.end_time.strftime('%I:%M %p %Z')
                 context_lines.append(f"- {emp_name} scheduled from {start_str} to {end_str}.")
+            
+            # Incorporate employee preferences into the context
+            for shift in relevant_shifts:
+                emp = shift.employee
+                if emp:
+                    pref_shifts = emp.preferred_shifts
+                    pref_days = emp.preferred_days
+                    days_off = emp.days_off
+                    max_hours = emp.max_hours
+                    max_shifts_in_a_row = emp.max_shifts_in_a_row
+
+                    if pref_shifts:
+                        context_lines.append(f"- {emp.name}'s preferred shifts: {', '.join(pref_shifts)}")
+                    if pref_days:
+                        context_lines.append(f"- {emp.name}'s preferred days: {', '.join(pref_days)}")
+                    if days_off:
+                        context_lines.append(f"- {emp.name}'s days off: {', '.join([d.strftime('%Y-%m-%d') for d in days_off])}")
+                    if max_hours:
+                        context_lines.append(f"- {emp.name}'s maximum hours per week: {max_hours}")
+                    if max_shifts_in_a_row:
+                        context_lines.append(f"- {emp.name}'s maximum shifts in a row: {max_shifts_in_a_row}")
+
             context = "\n".join(context_lines)
 
     except Exception as db_err:
