@@ -2,6 +2,7 @@ import enum
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone, date, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.dialects.postgresql import JSONB
 
 db = SQLAlchemy()
 
@@ -184,4 +185,87 @@ class OllamaQuery(db.Model):
             'model_used': self.model_used,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+class PolicyDocument(db.Model):
+    __tablename__ = 'policy_documents'
+
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    file_type = db.Column(db.String(20), nullable=True)
+    uploaded_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    uploader_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True)
+    content = db.Column(db.Text, nullable=False)  # Raw extracted text content
+    file_data = db.Column(db.LargeBinary, nullable=True)  # Original file bytes
+
+    uploader = db.relationship('Employee', backref='uploaded_policies', lazy=True)
+    chunks = db.relationship('PolicyChunk', backref='document', lazy=True, cascade="all, delete-orphan")
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'filename': self.filename,
+            'file_type': self.file_type,
+            'uploaded_at': self.uploaded_at.isoformat() if self.uploaded_at else None,
+            'uploader_id': self.uploader_id,
+            'content_preview': self.content[:200] + '...' if self.content else '',
+        }
+
+class Conversation(db.Model):
+    __tablename__ = 'conversations'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True)
+    title = db.Column(db.String(255), nullable=False, default="New Chat")
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    messages = db.Column(db.JSON, nullable=False, default=list)  # List of {role, text}
+
+    user = db.relationship('Employee', backref='conversations', lazy=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'title': self.title,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'messages': self.messages
+        }
+
+class ScheduleSnapshot(db.Model):
+    __tablename__ = 'schedule_snapshots'
+
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_by = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True)
+    description = db.Column(db.String(255), nullable=True)
+    data = db.Column(db.LargeBinary, nullable=False)  # Pickled or JSON-encoded schedule data
+
+    creator = db.relationship('Employee', backref='schedule_snapshots', lazy=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_by': self.created_by,
+            'description': self.description,
+        }
+
+class PolicyChunk(db.Model):
+    __tablename__ = 'policy_chunks'
+
+    id = db.Column(db.Integer, primary_key=True)
+    document_id = db.Column(db.Integer, db.ForeignKey('policy_documents.id'), nullable=False)
+    chunk_text = db.Column(db.Text, nullable=False)
+    embedding = db.Column(JSONB, nullable=True)  # Store embedding vector as JSON array
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'document_id': self.document_id,
+            'chunk_text_preview': self.chunk_text[:200] + '...' if self.chunk_text else '',
+            'embedding_dim': len(self.embedding) if self.embedding else 0,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
         }

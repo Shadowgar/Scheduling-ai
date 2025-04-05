@@ -1,46 +1,46 @@
+
 # Employee Scheduling Application
 
 This project is a web-based application designed to help manage employee schedules, particularly aimed at environments like law enforcement or security, but adaptable to other shift-based work. It provides a user interface for supervisors to manage employees and assign shifts, and for employees to view their schedules. The application features a modern and sleek design with a consistent look and feel across all components, using a cohesive color palette, subtle box shadows, and rounded corners for a visually appealing experience.
 
-While the initial concept involved direct AI integration for schedule optimization (as reflected in earlier descriptions), the current implementation focuses on providing a robust manual scheduling interface with role-based access control. Future development could integrate AI features for suggestion or automation.
+
+---
 
 ## Core Features
 
--   **User Authentication**: Secure login/logout functionality using JWT (JSON Web Tokens).
--   **Role-Based Access Control**: Differentiates between 'supervisor' and other roles (e.g., 'employee', 'police', 'security'), granting different permissions.
-    -   Supervisors can manage employees and shifts.
-    -   Other logged-in users can view the schedule (future features could include requests).
-    -   Anonymous users can view the main schedule calendar.
--   **Employee Management**: Supervisors can Create, Read, Update, and Delete employee records.
--   **Shift Management**: Supervisors can Create, Read, Update, and Delete shifts for employees.
--   **Interactive Calendar View**: Displays shifts on a monthly calendar grid.
-    -   Visually distinguishes weekends/week parity (configurable).
-    -   Allows supervisors to click cells to add/edit shifts via a modal.
--   **RESTful API Backend**: Built with Flask, providing endpoints for frontend interaction.
--   **React Frontend**: A dynamic user interface built with React.
+- **User Authentication**: Secure login/logout functionality using JWT (JSON Web Tokens).
+- **Role-Based Access Control**: Supervisors can manage employees and shifts; employees can view schedules.
+- **Employee Management**: CRUD operations.
+- **Shift Management**: CRUD operations.
+- **Interactive Calendar View**: Monthly grid with modals.
+- **RESTful API Backend**: Flask.
+- **React Frontend**: Dynamic UI.
+- **AI Assistant**:
+  - ChatGPT-like interface with persistent conversations.
+  - Automated schedule modifications via AI.
+  - Undo/redo schedule changes.
+  - Dark/light theme toggle.
+  - Settings panel.
+  - Tailwind CSS responsive design.
+- **Policy Management**: Upload, view, and manage policy documents.
+- **Schedule Snapshots**: Save and restore schedule states.
+
+---
 
 ## Technologies Used
 
--   **Backend**:
-    -   Python
-    -   Flask (Web Framework)
-    -   Flask-SQLAlchemy (ORM)
-    -   Flask-Migrate (Database Migrations)
-    -   Flask-JWT-Extended (Authentication)
-    -   Flask-CORS (Cross-Origin Resource Sharing)
-    -   Werkzeug (Password Hashing, WSGI utilities)
-    -   python-dotenv (Environment Variables)
--   **Frontend**:
-    -   JavaScript
-    -   React
-    -   React Router (Navigation)
-    -   CSS (Styling)
-    -   `fetch` API (Backend communication)
--   **Database**:
-    -   PostgreSQL
--   **Containerization (Optional)**:
-    -   Docker
-    -   Docker Compose
+- **Backend**:
+  - Python, Flask, Flask-SQLAlchemy, Flask-Migrate, Flask-JWT-Extended, Flask-CORS
+  - PostgreSQL
+  - Alembic, Pydantic, Pytest
+- **Frontend**:
+  - React, React Router
+  - Tailwind CSS
+  - Fetch API
+- **Containerization (Optional)**:
+  - Docker, Docker Compose
+
+---
 
 ## Project Structure
 ```

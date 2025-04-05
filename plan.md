@@ -19,6 +19,7 @@ Based on the file analysis, the following functionality is already implemented:
     *   Ollama integration (API endpoints for querying Ollama).
     *   Basic RAG implementation for context retrieval.
     *   Database models for employees, schedules, and Ollama queries.
+    *   **Policy document ingestion with text extraction and chunking (TXT, PDF, DOCX supported).**
 *   **Frontend (React):**
     *   Routing and navigation.
     *   Login page and protected routes.
@@ -29,15 +30,28 @@ Based on the file analysis, the following functionality is already implemented:
 
 The following functionality needs to be implemented:
 
+*   **AI Assistant UI Enhancements (Optional/Future):**
+    *   Streaming AI responses
+    *   Profile management UI
+    *   Export/import conversations
+    *   Advanced settings (model selection, temperature)
+    *   Chat message editing or deleting
+    *   Conversation search/filter
+    *   Notifications or alerts
+
 *   **Supervisor Interface:**
     *   A user-friendly interface for supervisors to view and edit employee schedules.
-    *   Drag-and-drop functionality for assigning shifts to employees.
     *   Ability to create, update, and delete shifts.
 *   **Enhanced AI Integration:**
     *   Improved RAG implementation for more accurate context retrieval.
     *   More sophisticated prompt engineering for better AI responses.
     *   Ability to specify scheduling constraints and receive AI-powered suggestions.
     *   Integration with the supervisor interface to display AI insights and recommendations.
+    *   **Integrate policy chunk retrieval and embeddings into AI pipeline (policy upload & chunking done).**
+*   **Policy Management UI:**
+    *   Supervisor interface to upload, view, download, and manage policy documents.
+    *   Display extracted text and metadata.
+    *   Support deleting or updating documents.
 *   **Data Visualization:**
     *   Visualizations to display schedule data, such as employee availability, shift coverage, and workload distribution.
     *   Charts and graphs to highlight potential scheduling conflicts and areas for improvement.
@@ -55,7 +69,6 @@ The project will be completed in the following stages:
 
 1.  **Implement the schedule editing interface:**
     *   Create React components for displaying and editing the schedule.
-    *   Implement drag-and-drop functionality for assigning shifts to employees.
     *   Implement forms for creating, updating, and deleting shifts.
 2.  **Integrate the interface with the backend:**
     *   Connect the frontend components to the backend API endpoints for shift management.

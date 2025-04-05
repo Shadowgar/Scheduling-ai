@@ -15,6 +15,7 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.4.1",
     "react-scripts": "^5.0.1",
+    "tailwindcss": "^3.4.1",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
@@ -27,14 +28,6 @@
     "extends": [
       "react-app",
       "react-app/jest"
-    ]
-  },
-  "jest": {
-    "transform": {
-      "^.+\\.(js|jsx|ts|tsx)$": "<rootDir>/node_modules/babel-jest"
-    },
-    "transformIgnorePatterns": [
-      "/node_modules/(?!react-dnd|react-dnd-html5-backend)/"
     ]
   },
   "jest": {
@@ -57,6 +50,8 @@
   "devDependencies": {
     "@babel/core": "^7.26.10",
     "@babel/preset-env": "^7.26.9",
-    "babel-jest": "^29.7.0"
+    "autoprefixer": "^10.4.21",
+    "babel-jest": "^29.7.0",
+    "postcss": "^8.5.3"
   }
 }

@@ -90,7 +90,7 @@ const ScheduleCalendar = ({ currentUser }) => {
         };
     }, [memoizedFetchEmployeeData, memoizedFetchShiftData, error, setLoading, setError, setEmployees]);
 
-    const { year, month, monthName, daysInMonth, datesInMonth } = useMemo(() => {
+    const { year, month, monthName, datesInMonth } = useMemo(() => {
         const yr = currentDate.getFullYear();
         const mnth = currentDate.getMonth();
         const name = currentDate.toLocaleString('default', { month: 'long' });

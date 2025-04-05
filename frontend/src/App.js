@@ -95,7 +95,7 @@ function App() {
                  console.log('App.js: Token found and currentUser exists, skipping fetch.');
                  if (isLoading) setIsLoading(false);
             }
-        }, [handleLogout, currentUser, isLoading]);
+        }, [handleLogout]);
 
 
         if (isLoading) {
@@ -152,6 +152,45 @@ function App() {
         </ProtectedRoute>
     }
 />
+                        <Route
+                            path="/admin/policies"
+                            element={
+                                <ProtectedRoute
+                                    isAllowed={isAuthenticated && userAccessRole === 'supervisor'}
+                                    redirectTo="/schedule"
+                                >
+                                    <React.Suspense fallback={<div>Loading...</div>}>
+                                        {React.createElement(require('./components/PolicyManager').default)}
+                                    </React.Suspense>
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/admin/policies/view/:id"
+                            element={
+                                <ProtectedRoute
+                                    isAllowed={isAuthenticated && userAccessRole === 'supervisor'}
+                                    redirectTo="/schedule"
+                                >
+                                    <React.Suspense fallback={<div>Loading...</div>}>
+                                        {React.createElement(require('./components/PolicyViewer').default)}
+                                    </React.Suspense>
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/admin/policies/file/:id"
+                            element={
+                                <ProtectedRoute
+                                    isAllowed={isAuthenticated && userAccessRole === 'supervisor'}
+                                    redirectTo="/schedule"
+                                >
+                                    <React.Suspense fallback={<div>Loading...</div>}>
+                                        {React.createElement(require('./components/PolicyFileViewer').default)}
+                                    </React.Suspense>
+                                </ProtectedRoute>
+                            }
+                        />
                         <Route
                             path="/"
                             element={<Navigate to={isAuthenticated ? "/schedule" : "/login"} replace />}

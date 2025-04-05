@@ -9,6 +9,9 @@ from routes.auth import auth_bp
 from routes.employee import employee_bp
 from routes.shift import shift_bp
 from routes.ollama import ollama_bp
+from routes.policy import policy_bp
+from routes.conversation import conversation_bp
+from routes.schedule import schedule_bp
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -26,6 +29,9 @@ def create_app(config_class=Config):
     app.register_blueprint(employee_bp)
     app.register_blueprint(shift_bp)
     app.register_blueprint(ollama_bp)
+    app.register_blueprint(policy_bp)
+    app.register_blueprint(conversation_bp)
+    app.register_blueprint(schedule_bp)
     
     # JWT user loader
     @jwt.user_lookup_loader

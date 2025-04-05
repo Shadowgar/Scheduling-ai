@@ -9,21 +9,41 @@
 - [x] Design and implement employee preference data model
 - [x] Create UI for capturing employee shift preferences
 - [x] Develop quick fill buttons in ShiftModal
-- [ ] Develop drag-and-drop shift assignment functionality
 
 ### AI Integration
-- [ ] Set up basic RAG implementation for Ollama
-- [ ] Design prompt templates for common scheduling queries
-- [ ] Create context retrieval system for employee data
-- [ ] Implement AI suggestion display in the UI
-- [ ] Develop feedback mechanism for AI suggestions
+- [x] Set up basic RAG implementation for Ollama
+- [x] Design prompt templates for common scheduling queries
+- [x] Create context retrieval system for employee data
+- [x] Implement AI suggestion display in the UI
+- [x] Develop feedback mechanism for AI suggestions
+- [x] Parse AI JSON suggestions and apply schedule updates
+- [x] Save schedule snapshots before AI changes
+- [x] Implement undo for AI-driven schedule changes
 
 ### Policy Management
-- [ ] Design policy document database schema
-- [ ] Create document upload and processing pipeline
-- [ ] Implement chunking algorithm for policy documents
+- [x] Design policy document database schema
+- [x] Create document upload and processing pipeline
+- [x] Implement chunking algorithm for policy documents
 - [ ] Set up vector embeddings for policy chunks
 - [ ] Build policy retrieval integration with RAG system
+- [x] Develop frontend UI for uploading policy documents
+- [x] Create UI to list and view uploaded policies
+- [x] Implement download and delete functionality for policies
+- [x] Display extracted text and metadata in UI
+
+### AI Assistant UI Enhancements
+- [x] Persistent conversations with backend storage
+- [x] Inline renaming, deleting, switching chats
+- [x] Dark/light theme toggle
+- [x] Settings panel
+- [x] Tailwind CSS responsive redesign
+- [ ] Streaming AI responses
+- [ ] Profile management UI
+- [ ] Export/import conversations
+- [ ] Advanced settings (model selection, temperature)
+- [ ] Chat message editing or deleting
+- [ ] Conversation search/filter
+- [ ] Notifications or alerts
 
 ## Backlog
 

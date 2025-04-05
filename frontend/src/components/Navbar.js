@@ -26,7 +26,10 @@ const Navbar = ({ currentUser, onLogout }) => {
                         <Link to="/schedule" className="navbar-item">Schedule</Link>
                         <Link to="/assistant">AI Assistant</Link>
                         {isAdmin && (
-                            <Link to="/admin/employees" className="navbar-item">Manage Employees</Link>
+                            <>
+                                <Link to="/admin/employees" className="navbar-item">Manage Employees</Link>
+                                <Link to="/admin/policies" className="navbar-item">Policies</Link>
+                            </>
                         )}
                     </>
                 )}

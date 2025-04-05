@@ -49,14 +49,35 @@ def query_ollama():
     # RAG Implementation
     target_date = parse_date_from_query(user_query)
     target_shift_type = parse_shift_type_from_query(user_query)
-    current_app.logger.info(f"Parsed entities: Date={target_date}, ShiftType={target_shift_type}")
+    year, month = None, None
+    from utils.rag_helpers import parse_month_year_from_query
+    year, month = parse_month_year_from_query(user_query)
+    current_app.logger.info(f"Parsed entities: Date={target_date}, Month={month}, Year={year}, ShiftType={target_shift_type}")
 
-    context = get_shifts_for_context(target_date, target_shift_type)
+    from utils import rag_helpers
+    if year and month:
+        context = rag_helpers.get_shifts_for_month(year, month, target_shift_type)
+    else:
+        context = rag_helpers.get_shifts_for_context(target_date, target_shift_type)
+
     current_app.logger.info(f"Generated Context: {context[:200]}...")
 
     # Construct Augmented Prompt
-    system_prompt = "You are a helpful scheduling assistant. Your goal is to answer the user's question about the work schedule based *only* on the provided context, and taking into account employee preferences. Do not make assumptions or use external knowledge. If the context does not contain the answer, clearly state that the information is not available in the provided schedule data."
-    augmented_prompt = f"{system_prompt}\n\n{context}\n\nUser Question: {user_query}\n\nWhen generating the schedule, take into account the employee preferences.\n\nAnswer:"
+    system_prompt = (
+        "You are a helpful scheduling assistant. "
+        "Your goal is to answer the user's question about the work schedule based *only* on the provided context, "
+        "and taking into account employee preferences. "
+        "Do not make assumptions or use external knowledge. "
+        "If the context does not contain the answer, clearly state that the information is not available in the provided schedule data.\n\n"
+        "Analyze the detailed schedule context to:\n"
+        "- Summarize who is working which shifts, how many times, and on which days.\n"
+        "- Identify any conflicts, gaps, or overloads.\n"
+        "- Provide actionable insights or suggestions.\n\n"
+        "If the user explicitly asks to schedule an employee, or for a schedule update, or JSON output, then provide a JSON array of shift assignments like:\n"
+        '[{"employee": "Paul Rocco", "date": "2025-04-01", "shift_type": "Afternoon"}, ...]\n'
+        "Otherwise, respond naturally and conversationally."
+    )
+    augmented_prompt = f"{system_prompt}\n\n{context}\n\nUser Question: {user_query}\n\nAnswer:"
 
     # Call Ollama API with Augmented Prompt
     try:
@@ -110,9 +131,88 @@ def query_ollama():
         db.session.rollback()
         current_app.logger.error(f"Database logging error for Ollama query: {str(e)}", exc_info=True)
 
+    # Try to extract JSON schedule suggestions from AI response
+    import json as pyjson
+    schedule_updates = []
+    try:
+        json_start = ai_response_text.find('[')
+        json_end = ai_response_text.rfind(']')
+        if json_start != -1 and json_end != -1 and json_end > json_start:
+            json_str = ai_response_text[json_start:json_end+1]
+            schedule_updates = pyjson.loads(json_str)
+    except Exception as e:
+        current_app.logger.warning(f"Failed to parse AI JSON suggestions: {e}")
+
+    # Apply schedule updates
+    def apply_schedule_updates(updates):
+        from models import Shift, Employee
+        import pytz
+        tz = pytz.UTC
+        for item in updates:
+            try:
+                emp_name = item.get('employee')
+                date_str = item.get('date')
+                shift_type = item.get('shift_type')
+
+                if not emp_name or not date_str or not shift_type:
+                    continue
+
+                emp = Employee.query.filter_by(name=emp_name).first()
+                if not emp:
+                    continue
+
+                date_obj = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=tz)
+                start_hour, end_hour = 9, 17  # default
+
+                if shift_type == "Morning":
+                    start_hour, end_hour = 5, 12
+                elif shift_type == "Afternoon":
+                    start_hour, end_hour = 12, 16
+                elif shift_type == "Evening":
+                    start_hour, end_hour = 16, 21
+                elif shift_type == "Night":
+                    start_hour, end_hour = 21, 5  # overnight, handle separately
+
+                start_time = date_obj.replace(hour=start_hour, minute=0)
+                if shift_type == "Night":
+                    end_time = (date_obj + timedelta(days=1)).replace(hour=end_hour, minute=0)
+                else:
+                    end_time = date_obj.replace(hour=end_hour, minute=0)
+
+                # Check if shift exists
+                existing_shift = Shift.query.filter(
+                    Shift.employee_id == emp.id,
+                    Shift.start_time >= start_time,
+                    Shift.start_time < end_time
+                ).first()
+
+                if existing_shift:
+                    existing_shift.start_time = start_time
+                    existing_shift.end_time = end_time
+                else:
+                    new_shift = Shift(
+                        employee_id=emp.id,
+                        start_time=start_time,
+                        end_time=end_time
+                    )
+                    db.session.add(new_shift)
+
+            except Exception as e:
+                current_app.logger.warning(f"Failed to apply schedule update {item}: {e}")
+
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error committing schedule updates: {e}")
+
+    if schedule_updates:
+        apply_schedule_updates(schedule_updates)
+
     # Return AI Response to Frontend
     return jsonify({
         'response': ai_response_text,
+        'schedule_updates': schedule_updates
     }), 200
 
 

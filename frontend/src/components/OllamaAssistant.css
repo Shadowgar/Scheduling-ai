@@ -1,64 +1,145 @@
-/* frontend/src/components/OllamaAssistant.css */
-.ollama-assistant {
-  padding: 30px;
-  background-color: #f9f9f9;
-  border-radius: 12px;
-  margin: 30px auto;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  font-family: 'Roboto', sans-serif;
-  max-width: 700px;
-}
-
-.input-container {
+/* Container layout */
+.owui-container {
   display: flex;
-  margin-bottom: 15px;
+  height: 100vh;
+  font-family: Arial, sans-serif;
+  background-color: #343541;
+  color: #ececec;
 }
 
-.input-container input {
-  flex: 1;
+/* Sidebar */
+.owui-sidebar {
+  width: 250px;
+  background-color: #202123;
+  display: flex;
+  flex-direction: column;
   padding: 10px;
-  border: none;
-  border-radius: 8px 0 0 8px;
-  font-size: 1em;
-  padding: 10px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.input-container button {
-  padding: 10px 15px;
-  background-color: #3498db;
-  color: white;
+.new-chat-btn {
+  background-color: #444654;
+  color: #ececec;
   border: none;
-  border-radius: 0 8px 8px 0;
+  padding: 10px;
+  margin-bottom: 10px;
   cursor: pointer;
-  font-size: 1em;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 5px;
 }
 
-.input-container button:hover {
-  background-color: #2980b9;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+.new-chat-btn:hover {
+  background-color: #555770;
 }
 
-.input-container button:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
+.chat-list {
+  flex-grow: 1;
+  overflow-y: auto;
 }
 
-.error-message {
-  color: #d32f2f;
-  margin: 10px 0;
+.chat-item {
+  padding: 8px;
+  margin-bottom: 5px;
+  background-color: #343541;
+  border-radius: 5px;
+  cursor: pointer;
 }
 
-.response-container {
-  margin-top: 20px;
-  padding: 15px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+.chat-item:hover {
+  background-color: #444654;
 }
 
-.response-content {
+.sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sidebar-footer button {
+  background-color: #444654;
+  color: #ececec;
+  border: none;
+  padding: 8px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.sidebar-footer button:hover {
+  background-color: #555770;
+}
+
+/* Chat area */
+.owui-chat-area {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #343541;
+}
+
+/* Messages */
+.owui-messages {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.owui-message {
+  max-width: 80%;
+  padding: 10px 15px;
+  margin-bottom: 10px;
+  border-radius: 15px;
   white-space: pre-wrap;
-  font-family: 'Courier New', Courier, monospace;
+}
+
+.owui-message.user {
+  background-color: #2b90d9;
+  align-self: flex-end;
+  color: #fff;
+}
+
+.owui-message.assistant {
+  background-color: #444654;
+  align-self: flex-start;
+  color: #ececec;
+}
+
+/* Input form */
+.owui-input-form {
+  display: flex;
+  padding: 10px;
+  background-color: #202123;
+  border-top: 1px solid #444654;
+}
+
+.owui-input-form input {
+  flex-grow: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  margin-right: 10px;
+  background-color: #40414f;
+  color: #ececec;
+}
+
+.owui-input-form input:focus {
+  outline: none;
+}
+
+.owui-input-form button {
+  background-color: #2b90d9;
+  color: #fff;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.owui-input-form button:hover {
+  background-color: #2380c0;
+}
+
+/* Error message */
+.error-message {
+  color: #ff6b6b;
+  padding: 10px;
 }
