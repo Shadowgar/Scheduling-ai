@@ -56,28 +56,44 @@ def query_ollama():
 
     from utils import rag_helpers
     if year and month:
-        context = rag_helpers.get_shifts_for_month(year, month, target_shift_type)
+        schedule_context = rag_helpers.get_shifts_for_month(year, month, target_shift_type)
     else:
-        context = rag_helpers.get_shifts_for_context(target_date, target_shift_type)
+        schedule_context = rag_helpers.get_shifts_for_context(target_date, target_shift_type)
 
-    current_app.logger.info(f"Generated Context: {context[:200]}...")
+    # Call policy search API internally
+    try:
+        policy_resp = requests.post(
+            f"{request.host_url.rstrip('/')}/api/policies/search",
+            json={"query": user_query, "top_k": 5},
+            headers={"Authorization": request.headers.get("Authorization", "")},
+            timeout=10
+        )
+        policy_resp.raise_for_status()
+        policy_results = policy_resp.json().get("results", [])
+        policy_context = "\n".join([r["text"] for r in policy_results])
+    except Exception as e:
+        current_app.logger.error(f"Policy search failed: {e}", exc_info=True)
+        policy_context = ""
+
+    current_app.logger.info(f"Generated Schedule Context: {schedule_context[:200]}...")
+    current_app.logger.info(f"Generated Policy Context: {policy_context[:200]}...")
 
     # Construct Augmented Prompt
     system_prompt = (
         "You are a helpful scheduling assistant. "
-        "Your goal is to answer the user's question about the work schedule based *only* on the provided context, "
-        "and taking into account employee preferences. "
+        "Your goal is to answer the user's question about the work schedule and relevant policies, "
+        "using ONLY the provided context below. "
         "Do not make assumptions or use external knowledge. "
-        "If the context does not contain the answer, clearly state that the information is not available in the provided schedule data.\n\n"
-        "Analyze the detailed schedule context to:\n"
-        "- Summarize who is working which shifts, how many times, and on which days.\n"
-        "- Identify any conflicts, gaps, or overloads.\n"
-        "- Provide actionable insights or suggestions.\n\n"
-        "If the user explicitly asks to schedule an employee, or for a schedule update, or JSON output, then provide a JSON array of shift assignments like:\n"
-        '[{"employee": "Paul Rocco", "date": "2025-04-01", "shift_type": "Afternoon"}, ...]\n'
-        "Otherwise, respond naturally and conversationally."
+        "If the context does not contain the answer, clearly state that the information is not available.\n\n"
+        "=== Schedule Context ===\n"
+        f"{schedule_context}\n\n"
+        "=== Policy Context ===\n"
+        f"{policy_context}\n\n"
+        "User Question:\n"
+        f"{user_query}\n\n"
+        "Answer:"
     )
-    augmented_prompt = f"{system_prompt}\n\n{context}\n\nUser Question: {user_query}\n\nAnswer:"
+    augmented_prompt = system_prompt
 
     # Call Ollama API with Augmented Prompt
     try:
