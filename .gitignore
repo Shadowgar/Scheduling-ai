@@ -3,6 +3,7 @@ venv/
 env/
 .venv/
 backend/new_venv/
+/backend/new_venv310
 __pycache__/
 *.pyc
 *.pyo

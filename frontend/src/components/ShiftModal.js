@@ -1,5 +1,5 @@
 // frontend/src/components/ShiftModal.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import './ShiftModal.css'; // Ensure you have styles for the modal
 
 const ShiftModal = ({ isOpen, onClose, cellData, onShiftUpdate, selectedCells = [] }) => {

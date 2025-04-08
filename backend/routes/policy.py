@@ -6,19 +6,30 @@ from datetime import datetime, timezone
 
 import os
 
-# Load BGE model once
-from transformers import AutoTokenizer, AutoModel
-import torch
+# Local embedding model disabled; relying on external service or stub
 
-tokenizer = AutoTokenizer.from_pretrained("BAAI/bge-base-en")
-bge_model = AutoModel.from_pretrained("BAAI/bge-base-en")
-bge_model.eval()
+import requests
 
 def embed_text(text):
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
-    with torch.no_grad():
-        embeddings = bge_model(**inputs).last_hidden_state[:, 0, :]
-    return embeddings[0].cpu().tolist()
+    """
+    Generate embedding using external Ollama server.
+    """
+    try:
+        response = requests.post(
+            "http://localhost:11434/api/embeddings",
+            json={
+                "model": "nomic-embed-text",  # Change to your Ollama embedding model name if different
+                "prompt": text
+            },
+            timeout=30
+        )
+        response.raise_for_status()
+        data = response.json()
+        return data.get("embedding", [])
+    except Exception as e:
+        # Log error and return dummy embedding to avoid crash
+        print(f"Ollama embedding error: {e}")
+        return [0.0] * 768
 
 policy_bp = Blueprint('policy', __name__, url_prefix='/api/policies')
 
