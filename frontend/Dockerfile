@@ -1,20 +1,18 @@
-# Use the official Node.js image
-FROM node:16-slim
+# Frontend Dockerfile for React App
 
-# Set the working directory inside the container
+FROM node:18-slim
+
 WORKDIR /app
 
-# Copy package.json and package-lock.json
-COPY package*.json ./
-
-# Install the dependencies
+# Install dependencies
+COPY package.json package-lock.json ./
 RUN npm install
 
-# Copy the rest of your application files
+# Copy frontend source code
 COPY . .
 
-# Expose the port the app will run on
+# Expose React dev server port
 EXPOSE 3000
 
-# Run the application
+# Start React app in development mode with hot reload
 CMD ["npm", "start"]

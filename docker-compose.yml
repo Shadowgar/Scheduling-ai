@@ -1,41 +1,72 @@
 version: '3.9'
 
 services:
-  backend:
-    build: ./backend
+  db:
+    image: ankane/pgvector
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: schedule_ai
     ports:
-      - "5000:5000"
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
     volumes:
       - ./backend:/app
     environment:
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=yourpassword
-      - DB_NAME=scheduling
-    depends_on:
-      - db
-
-  db:
-    image: postgres:15
-    container_name: postgres
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/schedule_ai
+    command: sh -c "python init_db.py && flask run --host=0.0.0.0"
     ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: yourpassword
-      POSTGRES_DB: scheduling
-    volumes:
-      - db_data:/var/lib/postgresql/data
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
 
   frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
+    build:
+      context: ./frontend
     volumes:
       - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000
+    ports:
+      - "3000:3000"
     depends_on:
       - backend
 
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+  # Optional: LightRAG service container
+  # lightrag:
+  #   build:
+  #     context: ./lightrag
+  #   ports:
+  #     - "8001:8001"
+  #   depends_on:
+  #     - db
+  #     - backend
+
 volumes:
-  db_data:
+  pgdata:
+  ollama_data:

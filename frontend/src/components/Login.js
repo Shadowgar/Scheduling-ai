@@ -1,6 +1,9 @@
 // frontend/src/components/Login.js
 import React, { useState } from 'react';
 import './Login.css';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || '';
+
 // No navigate needed here anymore, App.js handles it
 
 // Accept onLoginSuccess prop from App.js
@@ -18,7 +21,7 @@ function Login({ onLoginSuccess }) {
 
         try {
             console.log('Login.js: Attempting fetch to /api/auth/login'); // <<< DEBUG LOG
-            const response = await fetch('/api/auth/login', { // Using relative URL for proxy
+            const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

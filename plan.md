@@ -1,5 +1,25 @@
 # Comprehensive Project Plan for Security & Police Scheduling AI Application
 
+---
+
+## Progress Summary (as of 2025-04-09)
+
+- **Backend:** Implemented in **FastAPI** (not Flask, update from original plan).
+- **Completed:**
+  - User auth, employee & shift CRUD
+  - Basic RAG with Ollama integration
+  - Policy document upload, chunking, management
+  - Persistent chat with AI suggestions, undo, snapshots
+  - Core scheduling UI with quick fill, preferences
+- **In Progress / Next:**
+  - LightRAG integration with vector embeddings
+  - Excel import and historical data analysis
+  - Advanced AI features: conflict detection, recommendations, pattern recognition
+  - Time-off management, substitution, vacation selection
+  - Testing, API docs, and deployment automation
+
+---
+
 ## I. Project Vision
 
 Create an advanced AI-powered scheduling system specifically designed for law enforcement and security operations that:

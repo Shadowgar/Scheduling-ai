@@ -280,7 +280,10 @@
 - [ ] Conversation search/filter
 - [ ] Notifications or alerts
 
-## Completed Tasks maybe (needs verification if completed properly)
+## Verified Completed Tasks (as of 2025-04-09)
+All the following have been **confirmed implemented and functional** after code review:
+
+- [x] Initialize PostgreSQL + pgvector database schema via Alembic migrations (2025-04-09)
 - [x] Design and implement employee preference data model
 - [x] Create UI for capturing employee shift preferences
 - [x] Develop quick fill buttons in ShiftModal
@@ -304,6 +307,14 @@
 - [x] Dark/light theme toggle
 - [x] Settings panel
 - [x] Tailwind CSS responsive redesign
+
+## Discovered During Work (2025-04-09)
+- Backend is FastAPI, update plan.md accordingly.
+- LightRAG integration is **not yet complete**; embeddings and vector search partially scaffolded.
+- Excel import system is **not yet started**.
+- Time-off management, substitution, vacation selection **not yet started**.
+- Need to add unit tests for existing features (Phase 5).
+- Consider adding API docs (e.g., Swagger) for easier frontend/backend integration.
 
 ## Discovered Tasks
 *This section will be populated as new requirements or tasks are discovered during development.*
