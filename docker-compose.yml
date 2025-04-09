@@ -26,7 +26,7 @@ services:
       - FLASK_APP=app.py
       - FLASK_ENV=development
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/schedule_ai
-    command: sh -c "python init_db.py && flask run --host=0.0.0.0"
+    command: flask run --host=0.0.0.0
     ports:
       - "5000:5000"
     depends_on:
@@ -40,7 +40,7 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - REACT_APP_API_URL=http://localhost:5000
+      REACT_APP_API_URL: http://localhost:5000
     ports:
       - "3000:3000"
     depends_on:

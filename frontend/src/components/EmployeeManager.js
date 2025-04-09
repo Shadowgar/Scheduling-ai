@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import 'react-datepicker/dist/react-datepicker.css';
 import './EmployeeManager.css';
+import { apiFetch } from '../utils/api';
 
 const EmployeeManager = () => {
     const [employees, setEmployees] = useState([]);
@@ -55,7 +56,7 @@ const EmployeeManager = () => {
             const adminEmployeesApiUrl = '/api/admin/employees';
             console.log('Fetching admin employees from:', adminEmployeesApiUrl);
 
-            const response = await fetch(adminEmployeesApiUrl, {
+            const response = await apiFetch(adminEmployeesApiUrl, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -195,7 +196,7 @@ const EmployeeManager = () => {
         console.log(`Submitting ${method} to ${url} with data:`, JSON.stringify(dataToSend, null, 2));
 
         try {
-            const response = await fetch(url, {
+            const response = await apiFetch(url, {
                 method: method,
                 headers: {
                     'Content-Type': 'application/json',
@@ -237,7 +238,7 @@ const EmployeeManager = () => {
             console.log("Attempting to delete employee:", employeeId);
 
             try {
-                 const response = await fetch(`/api/employees/${employeeId}`, {
+                 const response = await apiFetch(`/api/employees/${employeeId}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`

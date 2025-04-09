@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { apiFetch } from '../utils/api';
 
 const PolicyViewer = () => {
   const { id } = useParams();
@@ -10,7 +11,7 @@ const PolicyViewer = () => {
     const fetchContent = async () => {
       try {
         const token = localStorage.getItem('accessToken');
-        const response = await fetch(`/api/policies/${id}/view`, {
+        const response = await apiFetch(`/api/policies/${id}/view`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

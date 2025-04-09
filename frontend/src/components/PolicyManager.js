@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './EmployeeManager.css'; // Reuse styling or create PolicyManager.css
+import { API_BASE_URL, apiFetch } from '../utils/api';
 
 const PolicyManager = () => {
   const [file, setFile] = useState(null);
@@ -11,7 +12,7 @@ const PolicyManager = () => {
   const fetchPolicies = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch('/api/policies/', {
+      const response = await apiFetch('/api/policies/', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -44,7 +45,7 @@ const PolicyManager = () => {
       formData.append('file', file);
 
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/policies/upload', true);
+      xhr.open('POST', API_BASE_URL + '/api/policies/upload', true);
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
 
       xhr.upload.onprogress = (event) => {
@@ -143,7 +144,7 @@ const PolicyManager = () => {
                   if (!window.confirm('Are you sure you want to delete this policy?')) return;
                   try {
                     const token = localStorage.getItem('accessToken');
-                    const response = await fetch(`/api/policies/${policy.id}`, {
+                    const response = await apiFetch(`/api/policies/${policy.id}`, {
                       method: 'DELETE',
                       headers: {
                         'Authorization': `Bearer ${token}`

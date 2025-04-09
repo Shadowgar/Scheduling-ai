@@ -1,5 +1,5 @@
-// frontend/src/utils/fetchUtils.js
 import { formatDateKey } from './dateUtils';
+import { apiFetch } from './api';
 
 export const fetchShiftData = async (currentDate, setError, setShiftLookup) => {
     const year = currentDate.getFullYear();
@@ -18,7 +18,7 @@ export const fetchShiftData = async (currentDate, setError, setShiftLookup) => {
 
     try {
         console.log(`Fetching shifts from: ${shiftsApiUrl}`);
-        const shiftResponse = await fetch(shiftsApiUrl, { method: 'GET', headers: headers });
+        const shiftResponse = await apiFetch(shiftsApiUrl, { method: 'GET', headers: headers });
 
         if (!shiftResponse.ok) {
             let errorDetails = `Shift fetch failed (${shiftResponse.status})`;
@@ -75,7 +75,7 @@ export const fetchEmployeeData = async (setLoading, setError, setEmployees) => {
         // Use /api/employees (gets only active/schedulable ones by default)
         const employeesApiUrl = '/api/employees';
         console.log(`Fetching employees from: ${employeesApiUrl}`);
-        const empResponse = await fetch(employeesApiUrl, { method: 'GET', headers: headers });
+        const empResponse = await apiFetch(employeesApiUrl, { method: 'GET', headers: headers });
 
         if (!empResponse.ok) {
             let errorDetails = `Employee fetch failed (${empResponse.status})`;

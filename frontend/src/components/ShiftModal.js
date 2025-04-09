@@ -1,6 +1,7 @@
 // frontend/src/components/ShiftModal.js
 import React, { useState, useEffect } from 'react';
 import './ShiftModal.css'; // Ensure you have styles for the modal
+import { apiFetch } from '../utils/api';
 
 const ShiftModal = ({ isOpen, onClose, cellData, onShiftUpdate, selectedCells = [] }) => {
     // Existing state declarations...
@@ -46,7 +47,7 @@ const ShiftModal = ({ isOpen, onClose, cellData, onShiftUpdate, selectedCells = 
                 return;
             }
             try {
-                const response = await fetch('/api/admin/employees', {
+                const response = await apiFetch('/api/admin/employees', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.status === 401 || response.status === 403) {
@@ -143,7 +144,7 @@ const ShiftModal = ({ isOpen, onClose, cellData, onShiftUpdate, selectedCells = 
         console.log(`Saving shift (${method} to ${url}) Payload:`, shiftPayload);
 
         try {
-            const response = await fetch(url, {
+            const response = await apiFetch(url, {
                 method: method,
                 headers: {
                     'Content-Type': 'application/json',
@@ -245,7 +246,7 @@ const ShiftModal = ({ isOpen, onClose, cellData, onShiftUpdate, selectedCells = 
 
                 console.log(`${method} shift for ${cell.employeeName || employeeId} on ${date}`, shiftPayload);
                 
-                const response = await fetch(url, {
+                const response = await apiFetch(url, {
                     method: method,
                     headers: {
                         'Content-Type': 'application/json',
@@ -296,7 +297,7 @@ const ShiftModal = ({ isOpen, onClose, cellData, onShiftUpdate, selectedCells = 
             console.log(`Deleting shift: ${url}`);
 
             try {
-                const response = await fetch(url, {
+                const response = await apiFetch(url, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });

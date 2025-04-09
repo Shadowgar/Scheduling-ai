@@ -8,10 +8,20 @@ employee_bp = Blueprint('employee', __name__)
 @employee_bp.route('/api/admin/employees', methods=['GET'])
 @jwt_required()
 def handle_admin_employees():
-    current_app.logger.info(f"Request received for /api/admin/employees by user: {current_user.email if current_user else 'Unknown'}")
-    if not current_user or current_user.access_role != AccessRole.SUPERVISOR:
-        current_app.logger.warning(f"Permission denied for /api/admin/employees. User: {current_user.email if current_user else 'None'}, Role: {current_user.access_role.value if current_user else 'N/A'}")
+    try:
+        current_app.logger.info(f"Request received for /api/admin/employees")
+        # Debug current_user object
+        current_app.logger.info(f"current_user: {current_user}")
+        current_app.logger.info(f"current_user email: {getattr(current_user, 'email', 'None')}")
+        current_app.logger.info(f"current_user role: {getattr(current_user, 'access_role', 'None')}")
+    except Exception as e:
+        current_app.logger.error(f"Error accessing current_user: {e}", exc_info=True)
+        return jsonify({"error": "Internal server error accessing user info"}), 500
+
+    if not current_user or getattr(current_user, 'access_role', None) != AccessRole.SUPERVISOR:
+        current_app.logger.warning(f"Permission denied for /api/admin/employees. User: {getattr(current_user, 'email', 'None')}, Role: {getattr(current_user, 'access_role', 'None')}")
         return jsonify({"error": "Permission denied: Only supervisors can access the full employee list"}), 403
+
     try:
         admin_employees = Employee.query.filter(
             Employee.status != EmployeeStatus.TERMINATED

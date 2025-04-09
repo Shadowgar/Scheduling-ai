@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { apiFetch } from '../utils/api';
 
 const PolicyFileViewer = () => {
   const { id } = useParams();
@@ -10,7 +11,7 @@ const PolicyFileViewer = () => {
     const fetchFile = async () => {
       try {
         const token = localStorage.getItem('accessToken');
-        const response = await fetch(`/api/policies/${id}/file`, {
+        const response = await apiFetch(`/api/policies/${id}/file`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

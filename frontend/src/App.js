@@ -8,6 +8,7 @@ import Login from './components/Login';
 import Navbar from './components/Navbar';
 import './App.css';
 import OllamaAssistant from './components/OllamaAssistant';
+import { apiFetch } from './utils/api';
 
 // ProtectedRoute remains the same conceptually
 const ProtectedRoute = ({ isAllowed, children, redirectTo = "/login" }) => {
@@ -62,7 +63,7 @@ function App() {
 
                 if (!isLoading) setIsLoading(true);
 
-                fetch('/api/auth/me', { headers: headers })
+                apiFetch('/api/auth/me', { headers: headers })
                 .then(response => {
                     if (response.ok) {
                         return response.json();

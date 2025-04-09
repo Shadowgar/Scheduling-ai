@@ -44,6 +44,28 @@ def create_app(config_class=Config):
             return None
         return db.session.get(Employee, identity_int)
     
+    # Global error handlers
+    from flask_jwt_extended.exceptions import NoAuthorizationError, InvalidHeaderError, JWTDecodeError
+    @app.errorhandler(NoAuthorizationError)
+    def handle_no_auth_error(e):
+        app.logger.error(f"NoAuthorizationError: {e}", exc_info=True)
+        return jsonify({"error": "Missing or invalid authorization token"}), 401
+
+    @app.errorhandler(InvalidHeaderError)
+    def handle_invalid_header_error(e):
+        app.logger.error(f"InvalidHeaderError: {e}", exc_info=True)
+        return jsonify({"error": "Invalid authorization header"}), 422
+
+    @app.errorhandler(JWTDecodeError)
+    def handle_jwt_decode_error(e):
+        app.logger.error(f"JWTDecodeError: {e}", exc_info=True)
+        return jsonify({"error": "Invalid JWT token"}), 422
+
+    @app.errorhandler(Exception)
+    def handle_exception_error(e):
+        app.logger.error(f"Unhandled Exception: {e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
+    
     # Root route
     @app.route('/')
     def index():

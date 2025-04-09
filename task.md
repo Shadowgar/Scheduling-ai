@@ -316,6 +316,17 @@ All the following have been **confirmed implemented and functional** after code 
 - Need to add unit tests for existing features (Phase 5).
 - Consider adding API docs (e.g., Swagger) for easier frontend/backend integration.
 
+---
+
+### Completed 2025-04-09: Fix Dockerized Frontend/Backend Communication
+
+- Refactored all frontend API calls to use a centralized `apiFetch()` helper with `REACT_APP_API_URL`.
+- Updated `docker-compose.yml` to set `REACT_APP_API_URL=http://backend:5000`.
+- Fixed all relative API URLs in React components and utils.
+- Confirmed backend connects to Postgres via Docker network alias `db`.
+- Updated README.md with Docker networking instructions.
+- Frontend, backend, and database now communicate correctly inside Docker.
+
 ## Discovered Tasks
 *This section will be populated as new requirements or tasks are discovered during development.*
 

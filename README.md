@@ -172,13 +172,21 @@ If `docker-compose.yml` and associated `Dockerfile`s are configured:
 
 1.  Ensure Docker and Docker Compose are installed.
 2.  Make sure your `.env` file is correctly set up in the `backend` directory (Docker Compose might be configured to use it).
-3.  From the project root directory:
+3.  **Important:** The frontend container communicates with the backend container using an internal Docker network hostname.  
+    - The environment variable `REACT_APP_API_URL` **must be set to** `http://backend:5000` **inside Docker**.  
+    - This is already configured in `docker-compose.yml`:
+      ```
+      environment:
+        - REACT_APP_API_URL=http://backend:5000
+      ```
+    - **Do not use `localhost` or `127.0.0.1` here**, as that would point to the frontend container itself, not the backend.
+4.  From the project root directory:
 
 ```bash
     docker-compose up --build
 ```
 
-4.  This command should build the images for the frontend, backend, and potentially the database, then start the containers. Access the application via the port exposed by the frontend service (likely `localhost:3000`).
+5.  This command should build the images for the frontend, backend, and potentially the database, then start the containers. Access the application via the port exposed by the frontend service (likely `localhost:3000`).
 
 ## Contributing
 

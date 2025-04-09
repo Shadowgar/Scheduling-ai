@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './OllamaAssistant.css';
+import { apiFetch } from '../utils/api';
 
 const OllamaAssistant = () => {
   const [query, setQuery] = useState('');
@@ -22,7 +23,7 @@ const OllamaAssistant = () => {
   const fetchConversations = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const res = await fetch('/api/conversations/', {
+      const res = await apiFetch('/api/conversations/', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -39,7 +40,7 @@ const OllamaAssistant = () => {
   const startNewChat = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const res = await fetch('/api/conversations/', {
+      const res = await apiFetch('/api/conversations/', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -58,7 +59,7 @@ const OllamaAssistant = () => {
   const deleteConversation = async (id) => {
     try {
       const token = localStorage.getItem('accessToken');
-      await fetch(`/api/conversations/${id}`, {
+      await apiFetch(`/api/conversations/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -72,7 +73,7 @@ const OllamaAssistant = () => {
   const updateConversation = async (conv) => {
     try {
       const token = localStorage.getItem('accessToken');
-      const res = await fetch(`/api/conversations/${conv.id}`, {
+      const res = await apiFetch(`/api/conversations/${conv.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -101,7 +102,7 @@ const OllamaAssistant = () => {
       const token = localStorage.getItem('accessToken');
 
       // Save snapshot before AI modifies schedule
-      await fetch('/api/schedule/snapshot', {
+      await apiFetch('/api/schedule/snapshot', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -110,7 +111,7 @@ const OllamaAssistant = () => {
         body: JSON.stringify({ description: 'Before AI change' })
       });
 
-      const res = await fetch('/api/ollama/query', {
+      const res = await apiFetch('/api/ollama/query', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -172,7 +173,7 @@ const OllamaAssistant = () => {
             onClick={async () => {
               try {
                 const token = localStorage.getItem('accessToken');
-                const snapsRes = await fetch('/api/schedule/snapshots', {
+                const snapsRes = await apiFetch('/api/schedule/snapshots', {
                   headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const snaps = await snapsRes.json();
@@ -181,7 +182,7 @@ const OllamaAssistant = () => {
                   return;
                 }
                 const latest = snaps[0];
-                await fetch(`/api/schedule/snapshot/${latest.id}/restore`, {
+                await apiFetch(`/api/schedule/snapshot/${latest.id}/restore`, {
                   method: 'POST',
                   headers: { 'Authorization': `Bearer ${token}` }
                 });
