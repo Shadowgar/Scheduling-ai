@@ -8,11 +8,22 @@ const EmployeeManager = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // Require full coverage state (persisted in localStorage)
+    const [requireFullCoverage, setRequireFullCoverage] = useState(() => {
+        const stored = localStorage.getItem('requireFullCoverage');
+        return stored === null ? false : stored === 'true';
+    });
+
     // State for Add/Edit Form
     const [showForm, setShowForm] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState(null); // null for Add, employee object for Edit
     const [formData, setFormData] = useState(getInitialFormData()); // Use helper for initial state
     const [isSubmitting, setIsSubmitting] = useState(false); // For form submission loading state
+
+    // Persist requireFullCoverage to localStorage
+    useEffect(() => {
+        localStorage.setItem('requireFullCoverage', requireFullCoverage ? 'true' : 'false');
+    }, [requireFullCoverage]);
 
     // Helper to get initial/reset form data
     function getInitialFormData() {
@@ -276,6 +287,21 @@ const EmployeeManager = () => {
 
     return (
         <div className="employee-manager">
+            <div style={{ marginBottom: 16, padding: '8px 12px', background: '#f8f8f8', borderRadius: 6, display: 'flex', alignItems: 'center' }}>
+                <input
+                    type="checkbox"
+                    id="requireFullCoverage"
+                    checked={requireFullCoverage}
+                    onChange={e => setRequireFullCoverage(e.target.checked)}
+                    style={{ marginRight: 8 }}
+                />
+                <label htmlFor="requireFullCoverage" style={{ fontWeight: 500 }}>
+                    Require all shifts (1,2,3) to be filled by Police
+                </label>
+                <span style={{ marginLeft: 10, color: '#888', fontSize: '0.95em' }}>
+                    (Controls schedule conflict highlighting for Police coverage in the calendar)
+                </span>
+            </div>
             <h2>Manage Employees</h2>
 
              {/* Show inline error if loading succeeded but there was a subsequent error (e.g., delete failed) */}
@@ -292,137 +318,155 @@ const EmployeeManager = () => {
             {/* --- Add/Edit Form --- */}
             {showForm && (
                 <div className="employee-form-container">
-                    <h3>{editingEmployee ? `Edit Employee: ${editingEmployee.name}` : 'Add New Employee'}</h3>
-                    {/* Display form-specific errors */}
+                    <h3 className="text-xl font-semibold mb-6">{editingEmployee ? `Edit Employee: ${editingEmployee.name}` : 'Add New Employee'}</h3>
                     {error && <div className="form-error error-message">{error}</div>}
                     <form onSubmit={handleSubmitForm}>
-                        {/* --- Required Fields --- */}
-                        <div className="form-group">
-                            <label htmlFor="name">Name:</label>
-                            <input type="text" id="name" name="name" value={formData.name} onChange={handleInputChange} required disabled={isSubmitting}/>
+                        {/* --- Basic Info --- */}
+                        <div className="mb-6">
+                            <div className="form-group">
+                                <label htmlFor="name">Full Name<span className="text-red-500">*</span></label>
+                                <input type="text" id="name" name="name" value={formData.name} onChange={handleInputChange} required disabled={isSubmitting}/>
+                                <div className="text-xs text-gray-500 mt-1">Enter the employee's full legal name.</div>
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="email">Email<span className="text-red-500">*</span></label>
+                                <input type="email" id="email" name="email" value={formData.email} onChange={handleInputChange} required disabled={isSubmitting}/>
+                                <div className="text-xs text-gray-500 mt-1">Work or personal email for notifications and login.</div>
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="phone">Phone</label>
+                                <input type="tel" id="phone" name="phone" value={formData.phone || ''} onChange={handleInputChange} disabled={isSubmitting}/>
+                                <div className="text-xs text-gray-500 mt-1">Optional. For urgent contact (e.g., 555-123-4567).</div>
+                            </div>
                         </div>
-                         <div className="form-group">
-                            <label htmlFor="email">Email:</label>
-                            <input type="email" id="email" name="email" value={formData.email} onChange={handleInputChange} required disabled={isSubmitting}/>
+                        <hr className="my-4"/>
+                        {/* --- Job Details --- */}
+                        <div className="mb-6">
+                            <div className="form-group">
+                                <label htmlFor="job_title">Job Title<span className="text-red-500">*</span></label>
+                                <select id="job_title" name="job_title" value={formData.job_title} onChange={handleInputChange} required disabled={isSubmitting}>
+                                    <option value="Employee">Employee</option>
+                                    <option value="Supervisor">Supervisor</option>
+                                    <option value="Police">Police</option>
+                                    <option value="Security">Security</option>
+                                </select>
+                                <div className="text-xs text-gray-500 mt-1">Determines scheduling rules and permissions.</div>
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="access_role">Access Role<span className="text-red-500">*</span></label>
+                                <select id="access_role" name="access_role" value={formData.access_role} onChange={handleInputChange} required disabled={isSubmitting}>
+                                    <option value="member">Member</option>
+                                    <option value="supervisor">Supervisor</option>
+                                </select>
+                                <div className="text-xs text-gray-500 mt-1">Supervisors can manage employees and schedules.</div>
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="hire_date">Hire Date<span className="text-red-500">*</span></label>
+                                <input type="date" id="hire_date" name="hire_date" value={formData.hire_date} onChange={handleInputChange} required disabled={isSubmitting}/>
+                                <div className="text-xs text-gray-500 mt-1">Date the employee started working.</div>
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="end_date">End Date</label>
+                                <input type="date" id="end_date" name="end_date" value={formData.end_date || ''} onChange={handleInputChange} disabled={isSubmitting}/>
+                                <div className="text-xs text-gray-500 mt-1">Optional. Last day of employment, if applicable.</div>
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="status">Status<span className="text-red-500">*</span></label>
+                                <select id="status" name="status" value={formData.status} onChange={handleInputChange} required disabled={isSubmitting}>
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                    <option value="on_leave">On Leave</option>
+                                </select>
+                                <div className="text-xs text-gray-500 mt-1">Active employees are scheduled; others are not.</div>
+                            </div>
+                            <div className="form-group checkbox-group flex items-center">
+                                <input type="checkbox" id="show_on_schedule" name="show_on_schedule" checked={formData.show_on_schedule} onChange={handleInputChange} disabled={isSubmitting} className="mr-2"/>
+                                <label htmlFor="show_on_schedule">Show on Schedule</label>
+                                <div className="text-xs text-gray-500 ml-2">Uncheck to hide from the schedule (e.g., for long-term leave).</div>
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="password">Password<span className="text-red-500">{!editingEmployee ? '*' : ''}</span></label>
+                                <input type="password" id="password" name="password" value={formData.password} onChange={handleInputChange} required={!editingEmployee} placeholder={editingEmployee ? '(Leave blank to keep unchanged)' : 'Required for new employee'} disabled={isSubmitting}/>
+                                <div className="text-xs text-gray-500 mt-1">
+                                    {!editingEmployee ? "Password is required when adding a new employee." : "Leave blank to keep the current password."}
+                                </div>
+                            </div>
                         </div>
-                        <div className="form-group">
-                            <label htmlFor="job_title">Job Title:</label>
-                            <select id="job_title" name="job_title" value={formData.job_title} onChange={handleInputChange} required disabled={isSubmitting}>
-                                <option value="Employee">Employee</option>
-                                <option value="Supervisor">Supervisor</option>
-                                <option value="Police">Police</option>
-                                <option value="Security">Security</option>
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="access_role">Access Role:</label>
-                            <select id="access_role" name="access_role" value={formData.access_role} onChange={handleInputChange} required disabled={isSubmitting}>
-                                <option value="member">Member</option>
-                                <option value="supervisor">Supervisor</option>
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="hire_date">Hire Date:</label>
-                            <input type="date" id="hire_date" name="hire_date" value={formData.hire_date} onChange={handleInputChange} required disabled={isSubmitting}/>
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="status">Status:</label>
-                            <select id="status" name="status" value={formData.status} onChange={handleInputChange} required disabled={isSubmitting}>
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                                <option value="on_leave">On Leave</option>
-                            </select>
-                        </div>
-                        <div className="form-group checkbox-group">
-                            <label htmlFor="show_on_schedule">Show on Schedule:</label>
-                            <input type="checkbox" id="show_on_schedule" name="show_on_schedule" checked={formData.show_on_schedule} onChange={handleInputChange} disabled={isSubmitting}/>
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="password">Password:</label>
-                            <input type="password" id="password" name="password" value={formData.password} onChange={handleInputChange} required={!editingEmployee} placeholder={editingEmployee ? '(Leave blank to keep unchanged)' : 'Required for new employee'} disabled={isSubmitting}/>
-                            {!editingEmployee && <small>Password is required when adding a new employee.</small>}
-                            {editingEmployee && <small>Leave blank to keep the current password.</small>}
-                        </div>
-
-                        {/* --- Optional Fields --- */}
-                         <div className="form-group">
-                            <label htmlFor="phone">Phone:</label>
-                            <input type="tel" id="phone" name="phone" value={formData.phone || ''} onChange={handleInputChange} disabled={isSubmitting}/>
-                        </div>
-                         <div className="form-group">
-                            <label htmlFor="end_date">End Date (Optional):</label>
-                            <input type="date" id="end_date" name="end_date" value={formData.end_date || ''} onChange={handleInputChange} disabled={isSubmitting}/>
-                        </div>
-                         <div className="form-group">
-                            <label htmlFor="seniority_level">Seniority Level (Optional):</label>
-                            <input type="number" id="seniority_level" name="seniority_level" value={formData.seniority_level || ''} onChange={handleInputChange} min="0" step="1" disabled={isSubmitting}/>
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="max_hours_per_week">Max Hours/Week (Optional):</label>
-                            <input type="number" id="max_hours_per_week" name="max_hours_per_week" value={formData.max_hours_per_week || ''} onChange={handleInputChange} min="0" step="1" disabled={isSubmitting}/>
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="min_hours_per_week">Min Hours/Week (Optional):</label>
-                            <input type="number" id="min_hours_per_week" name="min_hours_per_week" value={formData.min_hours_per_week || ''} onChange={handleInputChange} min="0" step="1" disabled={isSubmitting}/>
-                        </div>
-                        
-                        {/* Simplified preferred shifts selection */}
-                        <div className="form-group">
-                            <label htmlFor="preferred_shifts">Preferred Shifts (comma-separated):</label>
-                            <input 
-                                type="text" 
-                                id="preferred_shifts" 
-                                name="preferred_shifts"
-                                value={Array.isArray(formData.preferred_shifts) ? formData.preferred_shifts.join(', ') : formData.preferred_shifts || ''}
-                                onChange={(e) => {
-                                    const shiftsArray = e.target.value.split(',').map(s => s.trim()).filter(s => s);
-                                    setFormData(prev => ({ ...prev, preferred_shifts: shiftsArray }));
-                                }}
-                                placeholder="Morning, Afternoon, Evening, etc."
-                                disabled={isSubmitting}
-                            />
-                        </div>
-                        
-                        {/* Simplified preferred days selection */}
-                        <div className="form-group">
-                            <label htmlFor="preferred_days">Preferred Days (comma-separated):</label>
-                            <input 
-                                type="text" 
-                                id="preferred_days" 
-                                name="preferred_days"
-                                value={Array.isArray(formData.preferred_days) ? formData.preferred_days.join(', ') : formData.preferred_days || ''}
-                                onChange={(e) => {
-                                    const daysArray = e.target.value.split(',').map(d => d.trim()).filter(d => d);
-                                    setFormData(prev => ({ ...prev, preferred_days: daysArray }));
-                                }}
-                                placeholder="Monday, Tuesday, etc."
-                                disabled={isSubmitting}
-                            />
-                        </div>
-                        
-                        {/* Simplified days off */}
-                        <div className="form-group">
-                           <label htmlFor="days_off">Scheduling Preferences/Days Off:</label>
-                           <textarea
-                            id="days_off"
-                            name="days_off"
-                            value={formData.days_off || ''}
-                            onChange={handleInputChange}
-                            placeholder="Examples: 'Prefers weekends off', 'Unavailable 1st week of July', 'Cannot work Mondays'"
-                            rows={3}
-                            disabled={isSubmitting}
-                          />
-                         <small>Enter natural language preferences that the AI can use for scheduling.</small>
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="max_hours">Max Hours (Optional):</label>
-                            <input type="number" id="max_hours" name="max_hours" value={formData.max_hours || ''} onChange={handleInputChange} min="0" step="1" disabled={isSubmitting}/>
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="max_shifts_in_a_row">Max Shifts in a Row (Optional):</label>
-                            <input type="number" id="max_shifts_in_a_row" name="max_shifts_in_a_row" value={formData.max_shifts_in_a_row || ''} onChange={handleInputChange} min="0" step="1" disabled={isSubmitting}/>
-                        </div>
-
+                        <hr className="my-4"/>
+                        {/* --- Scheduling Preferences (Collapsible Advanced Section) --- */}
+                        <details className="mb-4" open>
+                            <summary className="font-semibold cursor-pointer mb-2">Advanced Scheduling Preferences (Optional)</summary>
+                            <div className="form-group">
+                                <label htmlFor="seniority_level">Seniority Level</label>
+                                <input type="number" id="seniority_level" name="seniority_level" value={formData.seniority_level || ''} onChange={handleInputChange} min="0" step="1" disabled={isSubmitting}/>
+                                <div className="text-xs text-gray-500 mt-1">Higher numbers indicate more seniority (for shift priority).</div>
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="max_hours_per_week">Max Hours/Week</label>
+                                <input type="number" id="max_hours_per_week" name="max_hours_per_week" value={formData.max_hours_per_week || ''} onChange={handleInputChange} min="0" step="1" disabled={isSubmitting}/>
+                                <div className="text-xs text-gray-500 mt-1">Maximum hours this employee can be scheduled per week.</div>
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="min_hours_per_week">Min Hours/Week</label>
+                                <input type="number" id="min_hours_per_week" name="min_hours_per_week" value={formData.min_hours_per_week || ''} onChange={handleInputChange} min="0" step="1" disabled={isSubmitting}/>
+                                <div className="text-xs text-gray-500 mt-1">Minimum hours this employee should be scheduled per week.</div>
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="preferred_shifts">Preferred Shifts</label>
+                                <input
+                                    type="text"
+                                    id="preferred_shifts"
+                                    name="preferred_shifts"
+                                    value={Array.isArray(formData.preferred_shifts) ? formData.preferred_shifts.join(', ') : formData.preferred_shifts || ''}
+                                    onChange={(e) => {
+                                        const shiftsArray = e.target.value.split(',').map(s => s.trim()).filter(s => s);
+                                        setFormData(prev => ({ ...prev, preferred_shifts: shiftsArray }));
+                                    }}
+                                    placeholder="e.g., Morning, Afternoon, Evening"
+                                    disabled={isSubmitting}
+                                />
+                                <div className="text-xs text-gray-500 mt-1">Comma-separated. Example: Morning, Afternoon, Evening.</div>
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="preferred_days">Preferred Days</label>
+                                <input
+                                    type="text"
+                                    id="preferred_days"
+                                    name="preferred_days"
+                                    value={Array.isArray(formData.preferred_days) ? formData.preferred_days.join(', ') : formData.preferred_days || ''}
+                                    onChange={(e) => {
+                                        const daysArray = e.target.value.split(',').map(d => d.trim()).filter(d => d);
+                                        setFormData(prev => ({ ...prev, preferred_days: daysArray }));
+                                    }}
+                                    placeholder="e.g., Monday, Tuesday"
+                                    disabled={isSubmitting}
+                                />
+                                <div className="text-xs text-gray-500 mt-1">Comma-separated. Example: Monday, Tuesday.</div>
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="days_off">Scheduling Preferences/Days Off</label>
+                                <textarea
+                                    id="days_off"
+                                    name="days_off"
+                                    value={formData.days_off || ''}
+                                    onChange={handleInputChange}
+                                    placeholder="e.g., Prefers weekends off, Unavailable 1st week of July, Cannot work Mondays"
+                                    rows={3}
+                                    disabled={isSubmitting}
+                                />
+                                <div className="text-xs text-gray-500 mt-1">Describe any special requests or restrictions in plain language.</div>
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="max_hours">Max Hours</label>
+                                <input type="number" id="max_hours" name="max_hours" value={formData.max_hours || ''} onChange={handleInputChange} min="0" step="1" disabled={isSubmitting}/>
+                                <div className="text-xs text-gray-500 mt-1">Absolute maximum hours per week (overrides other settings).</div>
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="max_shifts_in_a_row">Max Shifts in a Row</label>
+                                <input type="number" id="max_shifts_in_a_row" name="max_shifts_in_a_row" value={formData.max_shifts_in_a_row || ''} onChange={handleInputChange} min="0" step="1" disabled={isSubmitting}/>
+                                <div className="text-xs text-gray-500 mt-1">Maximum consecutive shifts this employee can work.</div>
+                            </div>
+                        </details>
                         {/* --- Form Actions --- */}
                         <div className="form-actions">
                             <button type="submit" className="save-button" disabled={isSubmitting}>

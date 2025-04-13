@@ -198,6 +198,11 @@ class PolicyDocument(db.Model):
     content = db.Column(db.Text, nullable=False)  # Raw extracted text content
     file_data = db.Column(db.LargeBinary, nullable=True)  # Original file bytes
 
+    # New fields for document management status
+    chunk_count = db.Column(db.Integer, nullable=False, default=0)
+    status = db.Column(db.String(32), nullable=False, default="Pending")  # "Indexed", "Pending", "Error"
+    error_message = db.Column(db.Text, nullable=True)
+
     uploader = db.relationship('Employee', backref='uploaded_policies', lazy=True)
     chunks = db.relationship('PolicyChunk', backref='document', lazy=True, cascade="all, delete-orphan")
 
@@ -209,6 +214,9 @@ class PolicyDocument(db.Model):
             'uploaded_at': self.uploaded_at.isoformat() if self.uploaded_at else None,
             'uploader_id': self.uploader_id,
             'content_preview': self.content[:200] + '...' if self.content else '',
+            'chunk_count': self.chunk_count,
+            'status': self.status,
+            'error_message': self.error_message,
         }
 
 class Conversation(db.Model):

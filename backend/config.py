@@ -19,5 +19,5 @@ class Config:
     JWT_SECRET_KEY = jwt_secret
     
     # Ollama Configuration
-    OLLAMA_API_URL = os.environ.get('OLLAMA_API_URL', 'http://localhost:11434/api')
+    OLLAMA_API_URL = os.environ.get('OLLAMA_API_URL', 'http://ollama:11434/api')
     OLLAMA_DEFAULT_MODEL = os.environ.get('OLLAMA_DEFAULT_MODEL', 'llama3:8b')

@@ -4,7 +4,7 @@
 
 ## Progress Summary (as of 2025-04-09)
 
-- **Backend:** Implemented in **FastAPI** (not Flask, update from original plan).
+- **Backend:** Implemented in **Flask**.
 - **Completed:**
   - User auth, employee & shift CRUD
   - Basic RAG with Ollama integration
@@ -265,7 +265,7 @@ Based on the file analysis, the following functionality is already implemented:
 ## VII. User Interface Components
 
 1. **Schedule Management Dashboard**
-   * Interactive calendar view with drag-and-drop functionality
+   * Interactive calendar view
    * Color-coded coverage visualization
    * Issue highlighting and quick-fix tools
    * AI suggestion panel

@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   db:
     image: ankane/pgvector
@@ -57,16 +55,6 @@ services:
         reservations:
           devices:
             - capabilities: [gpu]
-  # Optional: LightRAG service container
-  # lightrag:
-  #   build:
-  #     context: ./lightrag
-  #   ports:
-  #     - "8001:8001"
-  #   depends_on:
-  #     - db
-  #     - backend
-
 volumes:
   pgdata:
   ollama_data:

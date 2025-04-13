@@ -138,6 +138,68 @@ const ScheduleCalendar = ({ currentUser }) => {
         memoizedFetchShiftData(); // Re-fetch only the shift data for the current month
     };
 
+    // --- Conflict Detection Logic ---
+    const [requireFullCoverage, setRequireFullCoverage] = useState(() => {
+        const stored = localStorage.getItem('requireFullCoverage');
+        return stored === null ? false : stored === 'true';
+    });
+    // Listen for changes to requireFullCoverage in localStorage (set by EmployeeManager)
+    useEffect(() => {
+        const handleStorage = () => {
+            const stored = localStorage.getItem('requireFullCoverage');
+            setRequireFullCoverage(stored === 'true');
+        };
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
+    }, []);
+    // Also update requireFullCoverage on mount in case it was changed elsewhere
+    useEffect(() => {
+        const stored = localStorage.getItem('requireFullCoverage');
+        setRequireFullCoverage(stored === 'true');
+    }, []);
+    const conflictMap = useMemo(() => {
+        if (!requireFullCoverage) return {};
+        // Build a map: { [dateKey]: { [shiftNumber]: true } }
+        const conflicts = {};
+        // For each date in the month
+        datesInMonth.forEach(date => {
+            const dateKey = formatDateKey(date);
+            // For each shift number (1,2,3)
+            [1,2,3].forEach(shiftNum => {
+                // Find all shifts for this date and shiftNum
+                const shiftsForThisShiftNum = [];
+                employees.forEach(emp => {
+                    const empShifts = shiftLookup.get(emp.id);
+                    if (empShifts) {
+                        const shift = empShifts.get(dateKey);
+                        if (shift) {
+                            // Determine shift number using start/end time logic
+                            const start = new Date(shift.start_time);
+                            const end = new Date(shift.end_time);
+                            const startH = start.getHours();
+                            const endH = end.getHours();
+                            const durationMs = end.getTime() - start.getTime();
+                            let shiftNumber = null;
+                            if (startH === 7 && endH === 15) shiftNumber = 1;
+                            else if (startH === 15 && endH === 23) shiftNumber = 2;
+                            else if (startH === 23 && endH === 7 && durationMs > 6 * 3600 * 1000 && durationMs < 10 * 3600 * 1000) shiftNumber = 3;
+                            if (shiftNumber === shiftNum) {
+                                shiftsForThisShiftNum.push({ ...shift, employee: emp });
+                            }
+                        }
+                    }
+                });
+                // Check if at least one Police is assigned
+                const hasPolice = shiftsForThisShiftNum.some(s => (s.employee?.job_title || '').toLowerCase() === 'police');
+                if (!hasPolice) {
+                    if (!conflicts[dateKey]) conflicts[dateKey] = {};
+                    conflicts[dateKey][shiftNum] = true;
+                }
+            });
+        });
+        return conflicts;
+    }, [requireFullCoverage, datesInMonth, employees, shiftLookup]);
+    
     // --- Render Logic ---
     // Loading indicator
     if (loading) return <div className="loading-container">Loading Schedule...</div>;
@@ -176,6 +238,7 @@ const ScheduleCalendar = ({ currentUser }) => {
                     handleCellClick={handleCellClick}
                     firstDayOfMonth={firstDayOfMonth}
                     todayDateStr={todayDateStr}
+                    conflictMap={conflictMap}
                 />
             </div> {/* End schedule-calendar */}
 

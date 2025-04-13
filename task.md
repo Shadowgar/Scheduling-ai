@@ -8,7 +8,6 @@
 - [x] Design and implement employee preference data model
 - [x] Create UI for capturing employee shift preferences
 - [x] Develop quick fill buttons in ShiftModal
-- [ ] Implement enhanced calendar view with drag-and-drop functionality
 - [ ] Create color-coded visualization for staffing levels
 - [ ] Develop shift conflict detection and highlighting
 - [ ] Implement role-based access control for supervisors
@@ -29,10 +28,44 @@
 #### LightRAG Integration
 - [x] Set up basic RAG implementation for Ollama
 - [x] Design prompt templates for common scheduling queries
-- [ ] Implement LightRAG framework for improved retrieval
-- [ ] Set up vector embeddings for policy chunks
-- [ ] Create query reformulation for better understanding
-- [ ] Develop dynamic retrieval based on query complexity
+- [ ] ~~Implement LightRAG framework for improved retrieval~~ (Deprecated: migrating to LlamaIndex + FAISS)
+- [ ] ~~Set up vector embeddings for policy chunks~~ (Deprecated: migrating to LlamaIndex + FAISS)
+- [ ] ~~Create query reformulation for better understanding~~ (Deprecated: migrating to LlamaIndex + FAISS)
+- [ ] ~~Develop dynamic retrieval based on query complexity~~ (Deprecated: migrating to LlamaIndex + FAISS)
+
+---
+
+#### LlamaIndex + FAISS Migration & Document Management (2025-04-12)
+**Backend**
+- [x] Remove LightRAG and BGE/pgvector RAG code — 2025-04-12
+- [x] Add dependencies: llama-index, faiss-cpu, unstructured, requests — 2025-04-12
+- [x] Scaffold LlamaIndex + FAISS integration module and stub /api/policies/search endpoint — 2025-04-12
+- [x] Implement custom embedding and LLM classes for Ollama (nomic-embed-text, llama3:8b)
+- [x] Build document ingestion pipeline (TXT, PDF, DOCX upload, extraction, chunking, embedding)
+- [x] Store chunks and metadata in DB; store vectors in FAISS index
+- [x] Implement vector search API: POST /api/policies/search (query, top_k)
+- [x] Implement prompt augmentation (combine schedule and policy context) — 2025-04-12
+- [x] Database migration: add chunk_count, status, error_message to PolicyDocument — 2025-04-12
+- [x] Add FAISS index persistence (save/load, re-index on update/delete) — 2025-04-12
+- [x] Add Pytest unit tests for ingestion, search, and API
+
+**Backend Document Management API**
+- [x] List all documents (metadata: name, type, upload date, size, status, chunk count)
+- [x] Upload new documents (TXT, PDF, DOCX)
+- [x] Download/view document content (original and extracted text)
+- [x] Delete documents (with re-indexing)
+- [x] Re-index documents (manual trigger)
+- [x] Show chunking/embedding status and errors
+
+**Frontend**
+- [x] Table/grid of all documents (sortable, filterable, with status) — 2025-04-12
+- [x] Upload button (multi-file) — 2025-04-12
+- [x] View/download buttons for each document — 2025-04-12
+- [x] Delete button (with confirmation) — 2025-04-12
+- [x] Status indicators ("Indexed", "Pending", "Error") — 2025-04-12
+- [x] Re-index button — 2025-04-12
+- [x] Search/filter by name/type/status — 2025-04-12
+- [x] Show extracted text/chunks for each document — 2025-04-12
 
 ### Phase 2: AI-Powered Intelligence (Weeks 7-11)
 
@@ -309,7 +342,10 @@ All the following have been **confirmed implemented and functional** after code 
 - [x] Tailwind CSS responsive redesign
 
 ## Discovered During Work (2025-04-09)
-- Backend is FastAPI, update plan.md accordingly.
+- 2025-04-12: Added React Testing Library unit tests for PolicyManager UI (expected, edge, and failure cases).
+- 2025-04-12: Updated README.md with PolicyManager UI features and frontend test instructions.
+- 2025-04-12: Fixed Alembic migration and Docker Compose .env issues; database schema for PolicyDocument is now fully in sync with backend and frontend requirements.
+- Backend is Flask.
 - LightRAG integration is **not yet complete**; embeddings and vector search partially scaffolded.
 - Excel import system is **not yet started**.
 - Time-off management, substitution, vacation selection **not yet started**.
@@ -328,7 +364,21 @@ All the following have been **confirmed implemented and functional** after code 
 - Frontend, backend, and database now communicate correctly inside Docker.
 
 ## Discovered Tasks
+- 2025-04-12: Created backend/utils/llamaindex_faiss.py module and stubbed /api/policies/search endpoint for LlamaIndex + FAISS integration.
+- 2025-04-12: Migrating from LightRAG/pgvector/BGE to LlamaIndex + FAISS + Ollama embeddings for all policy/document RAG and search. LightRAG tasks deprecated.
+- 2025-04-12: FAISS index and metadata are now persisted to disk and loaded automatically on backend startup for robust, production-ready search.
 *This section will be populated as new requirements or tasks are discovered during development.*
+- 2025-04-12: [x] Fix backend PDF extraction and FAISS ingestion errors. Investigate and resolve `ModuleNotFoundError: No module named 'pdfplumber'` and `ModuleNotFoundError: No module named 'backend'` in backend Docker environment. Ensure all dependencies are installed and Python path is correctly set for package imports.
+- 2025-04-12: [x] Fix FAISS ingestion error (`No module named 'faiss'`) by updating backend Dockerfile to install system dependencies (`g++`, `libopenblas-dev`, `wget`) before pip install. Confirmed faiss-cpu is now importable in the backend container.
+
+- 2025-04-12: Fix backend PDF extraction and FAISS ingestion errors. Investigate and resolve `ModuleNotFoundError: No module named 'pdfplumber'` and `ModuleNotFoundError: No module named 'backend'` in backend Docker environment. Ensure all dependencies are installed and Python path is correctly set for package imports.
+
+---
+
+### Completed Tasks
+
+- [x] Enable Ollama Python client support in lightrag/lightrag/llm/ollama.py (uncomment import, implement functions, add to requirements.txt) — 2025-04-12
+
 
 - [ ] Need to define specific policy types and priority rules
 - [ ] Consider seasonal scheduling patterns and special events

@@ -9,6 +9,7 @@ import os
 # Local embedding model disabled; relying on external service or stub
 
 import requests
+from config import Config
 
 def embed_text(text):
     """
@@ -16,7 +17,7 @@ def embed_text(text):
     """
     try:
         response = requests.post(
-            "http://localhost:11434/api/embeddings",
+            f"{Config.OLLAMA_API_URL}/embeddings",
             json={
                 "model": "nomic-embed-text",  # Change to your Ollama embedding model name if different
                 "prompt": text
@@ -83,31 +84,59 @@ def upload_policy():
         else:
             text_content = "[Unsupported file type for text extraction.]"
 
-        # Save PolicyDocument
+        # Save PolicyDocument with status "Pending"
         new_doc = PolicyDocument(
             filename=filename,
             file_type=file_type,
             uploaded_at=datetime.now(timezone.utc),
             uploader_id=current_user.id,
             content=text_content,
-            file_data=file_bytes
+            file_data=file_bytes,
+            status="Pending",
+            chunk_count=0,
+            error_message=None
         )
         db.session.add(new_doc)
         db.session.flush()  # Get new_doc.id before commit
 
         # Chunking: simple split by paragraphs
-        paragraphs = [p.strip() for p in text_content.split('\n\n') if p.strip()]
-        for para in paragraphs:
-            embedding = embed_text(para)
-            chunk = PolicyChunk(
-                document_id=new_doc.id,
-                chunk_text=para,
-                embedding=embedding,
-                created_at=datetime.now(timezone.utc)
-            )
-            db.session.add(chunk)
+        try:
+            paragraphs = [p.strip() for p in text_content.split('\n\n') if p.strip()]
+            chunk_count = 0
+            for para in paragraphs:
+                embedding = embed_text(para)
+                chunk = PolicyChunk(
+                    document_id=new_doc.id,
+                    chunk_text=para,
+                    embedding=embedding,
+                    created_at=datetime.now(timezone.utc)
+                )
+                db.session.add(chunk)
+                chunk_count += 1
+            new_doc.chunk_count = chunk_count
+            new_doc.status = "Indexed"
+            new_doc.error_message = None
+            db.session.commit()
+        except Exception as chunk_err:
+            db.session.rollback()
+            new_doc.status = "Error"
+            new_doc.error_message = f"Chunking/embedding error: {chunk_err}"
+            db.session.add(new_doc)
+            db.session.commit()
+            current_app.logger.error(f"Chunking/embedding error: {chunk_err}", exc_info=True)
+            return jsonify({'error': 'Failed to process document chunks', 'details': str(chunk_err)}), 500
 
-        db.session.commit()
+        # Ingest into FAISS index for vector search
+        try:
+            from utils.llamaindex_faiss import ingest_policy_document
+            ingest_policy_document(new_doc.id, text_content)
+        except Exception as faiss_err:
+            new_doc.status = "Error"
+            new_doc.error_message = f"FAISS ingestion failed: {faiss_err}"
+            db.session.add(new_doc)
+            db.session.commit()
+            current_app.logger.error(f"FAISS ingestion failed: {faiss_err}", exc_info=True)
+            return jsonify({'error': 'FAISS ingestion failed', 'details': str(faiss_err)}), 500
 
         return jsonify({'message': 'Policy uploaded successfully', 'policy_id': new_doc.id}), 201
 
@@ -198,35 +227,68 @@ def delete_policy(policy_id):
 @jwt_required()
 def search_policies():
     """
-    Vector similarity search over policy chunks using pgvector.
+    Vector similarity search over policy chunks using LlamaIndex + FAISS.
     """
+    from utils.llamaindex_faiss import search_policy_chunks
+
     data = request.get_json()
     query_text = data.get('query', '')
     top_k = data.get('top_k', 5)
 
-    # Generate embedding for query
-    query_emb = embed_text(query_text)
-    emb_str = str(query_emb).replace('[', '{').replace(']', '}')
+    if not query_text:
+        return jsonify({"error": "Missing 'query' in request body."}), 400
 
-    sql = """
-        SELECT id, document_id, chunk_text, embedding <#> :query_emb AS score
-        FROM policy_chunks
-        ORDER BY embedding <#> :query_emb
-        LIMIT :top_k
+    results = search_policy_chunks(query_text, top_k)
+    return jsonify({"results": results}), 200
+
+@policy_bp.route('/reindex', methods=['POST'])
+@jwt_required()
+def reindex_policies():
     """
+    Re-index all policy documents: re-chunk, re-embed, and update FAISS index.
+    """
+    from utils.llamaindex_faiss import initialize_faiss_index, ingest_policy_document
 
-    results = db.session.execute(
-        db.text(sql),
-        {'query_emb': emb_str, 'top_k': top_k}
-    ).fetchall()
+    try:
+        # Reset FAISS index and metadata
+        initialize_faiss_index()
+        docs = PolicyDocument.query.all()
+        reindexed = 0
+        for doc in docs:
+            try:
+                # Remove old chunks
+                PolicyChunk.query.filter_by(document_id=doc.id).delete()
+                db.session.flush()
+                # Re-chunk and embed
+                paragraphs = [p.strip() for p in doc.content.split('\n\n') if p.strip()]
+                chunk_count = 0
+                for para in paragraphs:
+                    embedding = embed_text(para)
+                    chunk = PolicyChunk(
+                        document_id=doc.id,
+                        chunk_text=para,
+                        embedding=embedding,
+                        created_at=datetime.now(timezone.utc)
+                    )
+                    db.session.add(chunk)
+                    chunk_count += 1
+                doc.chunk_count = chunk_count
+                doc.status = "Indexed"
+                doc.error_message = None
+                db.session.commit()
+                # Re-ingest into FAISS
+                ingest_policy_document(doc.id, doc.content)
+                reindexed += 1
+            except Exception as err:
+                db.session.rollback()
+                doc.status = "Error"
+                doc.error_message = f"Reindex error: {err}"
+                db.session.add(doc)
+                db.session.commit()
+                current_app.logger.error(f"Reindex error for doc {doc.id}: {err}", exc_info=True)
+        return jsonify({"message": f"Re-indexed {reindexed} documents."}), 200
+    except Exception as e:
+        current_app.logger.error(f"Error during reindex: {e}", exc_info=True)
+        return jsonify({"error": "Failed to re-index documents", "details": str(e)}), 500
 
-    response = []
-    for row in results:
-        response.append({
-            "chunk_id": row.id,
-            "document_id": row.document_id,
-            "score": 1 - row.score,  # Convert distance to similarity
-            "text": row.chunk_text
-        })
-
-    return jsonify({"results": response})
+# The previous pgvector-based search endpoint has been removed.

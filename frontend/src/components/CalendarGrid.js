@@ -10,6 +10,7 @@ const CalendarGrid = ({
   handleCellClick,
   firstDayOfMonth,
   todayDateStr,
+  conflictMap = {},
 }) => {
   // Grid layout constants
   const HEADER_ROW_COUNT = 2; // Rows for Day Name and Date Number
@@ -98,12 +99,30 @@ const CalendarGrid = ({
               // Make cell clickable only for supervisors
               const clickableClass = userAccessRole === 'supervisor' ? 'clickable-cell' : '';
 
+              // --- Determine shift number for conflict highlighting ---
+              let shiftNumber = null;
+              if (shift && shift.start_time && shift.end_time) {
+                const start = new Date(shift.start_time);
+                const end = new Date(shift.end_time);
+                const startH = start.getHours();
+                const endH = end.getHours();
+                const durationMs = end.getTime() - start.getTime();
+                if (startH === 7 && endH === 15) shiftNumber = 1;
+                else if (startH === 15 && endH === 23) shiftNumber = 2;
+                else if (startH === 23 && endH === 7 && durationMs > 6 * 3600 * 1000 && durationMs < 10 * 3600 * 1000) shiftNumber = 3;
+              }
+              const dateKey = formatDateKey(date);
+              const isConflict = shiftNumber && conflictMap[dateKey] && conflictMap[dateKey][shiftNumber];
+
               // --- Tooltip Text ---
-              const titleText = shift?.notes && shift.notes.trim().length > 0
+              let titleText = shift?.notes && shift.notes.trim().length > 0
                 ? `Notes: ${shift.notes}` + (shift?.cell_text ? `\nCell: ${shift.cell_text}` : '')
                 : shift?.cell_text
                   ? `Cell: ${shift.cell_text}`
                   : (userAccessRole === 'supervisor' ? `Assign shift for ${employee.name} on ${formatDateKey(date)}` : `${employee.name} - ${formatDateKey(date)}`);
+              if (isConflict) {
+                titleText = `CONFLICT: No Police assigned to Shift ${shiftNumber} on ${dateKey}\n` + titleText;
+              }
 
               // --- Check for Notes Indicator ---
               const hasNotes = shift?.notes && shift.notes.trim().length > 0;
@@ -112,7 +131,7 @@ const CalendarGrid = ({
               return (
                 <div
                   key={`cell-group-${employee.id}-${index}`}
-                  className={`grid-cell-group ${weekColorClass} ${todayClass} ${clickableClass}`}
+                  className={`grid-cell-group ${weekColorClass} ${todayClass} ${clickableClass} ${isConflict ? 'conflict-cell' : ''}`}
                   style={{
                     gridRow: `${shiftDataRow} / span ${ROWS_PER_EMPLOYEE}`,
                     gridColumn: currentDataColumn,
@@ -120,9 +139,9 @@ const CalendarGrid = ({
                     justifyContent: 'center', alignItems: 'center',
                     padding: '5px',
                     borderRight: 'none', borderBottom: 'none',
-                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                    boxShadow: isConflict ? '0 0 0 2px #e74c3c' : '0 1px 3px rgba(0, 0, 0, 0.1)',
                     borderRadius: '5px',
-                    backgroundColor: '#fff',
+                    backgroundColor: isConflict ? '#ffeaea' : '#fff',
                     overflow: 'hidden',
                     lineHeight: '1.1', fontSize: '0.8em',
                     position: 'relative',
@@ -141,6 +160,18 @@ const CalendarGrid = ({
                   </div>
                   {/* *** ADD NOTE INDICATOR conditionally *** */}
                   {hasNotes && <div className="note-indicator"></div>}
+                  {isConflict && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 2,
+                      right: 2,
+                      color: '#e74c3c',
+                      fontWeight: 'bold',
+                      fontSize: '1.1em',
+                      pointerEvents: 'none',
+                      zIndex: 2,
+                    }} title="Shift conflict: No Police assigned">&#9888;</div>
+                  )}
                 </div>
               );
             })}

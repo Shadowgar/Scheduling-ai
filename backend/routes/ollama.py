@@ -6,6 +6,39 @@ from models import OllamaQuery, db
 from utils.rag_helpers import parse_date_from_query, parse_shift_type_from_query, get_shifts_for_context
 from config import Config
 
+def build_augmented_prompt(schedule_context: str, policy_context: str, user_query: str) -> str:
+    """
+    Construct an augmented prompt for the AI model, combining schedule and policy context.
+
+    Args:
+        schedule_context (str): Textual context about the current or relevant schedule.
+        policy_context (str): Textual context about relevant policies, rules, or regulations.
+        user_query (str): The user's original question or instruction.
+
+    Returns:
+        str: A formatted prompt string for the AI model.
+
+    The prompt is structured with clear section headers and instructions to ensure the AI
+    uses only the provided context and does not hallucinate or make unsupported assumptions.
+
+    # Reason: This function centralizes and standardizes prompt augmentation, making it
+    easy to maintain, test, and update as requirements evolve.
+    """
+    return (
+        "You are a helpful scheduling assistant. "
+        "Your goal is to answer the user's question about the work schedule and relevant policies, "
+        "using ONLY the provided context below. "
+        "Do not make assumptions or use external knowledge. "
+        "If the context does not contain the answer, clearly state that the information is not available.\n\n"
+        "=== Schedule Context ===\n"
+        f"{schedule_context}\n\n"
+        "=== Policy Context ===\n"
+        f"{policy_context}\n\n"
+        "User Question:\n"
+        f"{user_query}\n\n"
+        "Answer:"
+    )
+
 ollama_bp = Blueprint('ollama', __name__)
 
 @ollama_bp.route('/api/ollama/models', methods=['GET'])
@@ -78,22 +111,8 @@ def query_ollama():
     current_app.logger.info(f"Generated Schedule Context: {schedule_context[:200]}...")
     current_app.logger.info(f"Generated Policy Context: {policy_context[:200]}...")
 
-    # Construct Augmented Prompt
-    system_prompt = (
-        "You are a helpful scheduling assistant. "
-        "Your goal is to answer the user's question about the work schedule and relevant policies, "
-        "using ONLY the provided context below. "
-        "Do not make assumptions or use external knowledge. "
-        "If the context does not contain the answer, clearly state that the information is not available.\n\n"
-        "=== Schedule Context ===\n"
-        f"{schedule_context}\n\n"
-        "=== Policy Context ===\n"
-        f"{policy_context}\n\n"
-        "User Question:\n"
-        f"{user_query}\n\n"
-        "Answer:"
-    )
-    augmented_prompt = system_prompt
+    # Construct Augmented Prompt using helper
+    augmented_prompt = build_augmented_prompt(schedule_context, policy_context, user_query)
 
     # Call Ollama API with Augmented Prompt
     try:
