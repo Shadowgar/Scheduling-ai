@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, current_user
 import requests
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from models import OllamaQuery, db
 from utils.rag_helpers import parse_date_from_query, parse_shift_type_from_query, get_shifts_for_context
 from config import Config
@@ -36,6 +36,12 @@ def build_augmented_prompt(schedule_context: str, policy_context: str, user_quer
         f"{policy_context}\n\n"
         "User Question:\n"
         f"{user_query}\n\n"
+        "Instructions for Schedule Changes:\n"
+        "If the supervisor approves a replacement or schedule change, respond with a JSON array containing the schedule update(s) in the following format:\n"
+        "[{\"employee\": \"Replacement Name\", \"date\": \"YYYY-MM-DD\", \"shift_type\": \"Morning/Afternoon/Evening/Night\"}]\n"
+        "Do not make any changes unless the supervisor explicitly approves. Always ask for confirmation before proceeding.\n\n"
+        "Special Instruction: If the user's question is about who is working the most shifts (e.g., 'who is working the most morning shifts this month?'), use the schedule context above to answer directly. Name the employee(s) and the count. If there is a tie, list all top employees.\n\n"
+        "You MUST answer using only the JSON data in the '=== Shift Data (JSON) ===' section above. Do not use any names or numbers not present in the JSON. If the answer is not in the JSON, say so.\n\n"
         "Answer:"
     )
 
@@ -77,6 +83,16 @@ def query_ollama():
     employee_id = current_user.id
     model_to_use = data.get('model', Config.OLLAMA_DEFAULT_MODEL)
 
+    # --- NLU Integration ---
+    from utils import nlu
+    extracted_names = nlu.extract_employee_names(user_query)
+    extracted_dates = nlu.extract_dates(user_query)
+    extracted_shift_type = nlu.extract_shift_type(user_query)
+    extracted_intent = nlu.extract_intent(user_query)
+    current_app.logger.info(
+        f"NLU: names={extracted_names}, dates={extracted_dates}, shift_type={extracted_shift_type}, intent={extracted_intent}"
+    )
+
     current_app.logger.info(f"Received Ollama query from user {current_user.email}: '{user_query}'")
 
     # RAG Implementation
@@ -88,10 +104,84 @@ def query_ollama():
     current_app.logger.info(f"Parsed entities: Date={target_date}, Month={month}, Year={year}, ShiftType={target_shift_type}")
 
     from utils import rag_helpers
-    if year and month:
-        schedule_context = rag_helpers.get_shifts_for_month(year, month, target_shift_type)
+    # Use NLU-extracted values for query routing
+    if extracted_intent == "query":
+        # Use extracted dates and shift type for lookup
+        start_date, end_date = extracted_dates
+        if start_date and end_date and extracted_shift_type:
+            # If a week range is detected, implement week-based lookup (TODO: enhance extract_dates)
+            # For now, use get_shifts_for_context for a single day, or get_shifts_for_month for a month
+            if start_date.month == end_date.month and start_date.year == end_date.year and (end_date - start_date).days > 0:
+                # Multi-day range in same month: aggregate shifts for each day
+                context_lines = []
+                for n in range((end_date - start_date).days + 1):
+                    day = start_date + timedelta(days=n)
+                    context_lines.append(rag_helpers.get_shifts_for_context(day.date(), extracted_shift_type))
+                schedule_context = "\n".join(context_lines)
+            elif start_date.month == end_date.month and start_date == end_date:
+                schedule_context = rag_helpers.get_shifts_for_context(start_date.date(), extracted_shift_type)
+            else:
+                # Fallback to month view
+                schedule_context = rag_helpers.get_shifts_for_month(start_date.year, start_date.month, extracted_shift_type)
+        elif extracted_shift_type and year and month:
+            schedule_context = rag_helpers.get_shifts_for_month(year, month, extracted_shift_type)
+        elif extracted_shift_type and target_date:
+            schedule_context = rag_helpers.get_shifts_for_context(target_date, extracted_shift_type)
+        else:
+            # Fallback to original logic
+            if year and month:
+                schedule_context = rag_helpers.get_shifts_for_month(year, month, target_shift_type)
+            else:
+                schedule_context = rag_helpers.get_shifts_for_context(target_date, target_shift_type)
+    elif extracted_intent == "replace":
+        # Call-off/Replacement workflow
+        # 1. Identify the call-off shift
+        # 2. Mark as unassigned/call-off (not implemented here, just context for now)
+        # 3. Query for available/qualified replacements (stubbed)
+        # 4. Format context for AI to recommend and ask for approval
+
+        calloff_name = extracted_names[0] if extracted_names else None
+        calloff_date = extracted_dates[0] if extracted_dates and extracted_dates[0] else None
+        calloff_shift_type = extracted_shift_type or target_shift_type
+
+        from models import Shift, Employee
+        available_replacements = []
+        if calloff_name and calloff_date and calloff_shift_type:
+            # Find the shift to be replaced
+            shift_q = Shift.query.join(Employee).filter(
+                Employee.name == calloff_name,
+                Shift.start_time >= calloff_date,
+                Shift.start_time < calloff_date + timedelta(days=1)
+            )
+            if calloff_shift_type:
+                # Filter by shift type hours
+                if calloff_shift_type == "Morning":
+                    shift_q = shift_q.filter(Shift.start_time.hour >= 5, Shift.start_time.hour < 12)
+                elif calloff_shift_type == "Afternoon":
+                    shift_q = shift_q.filter(Shift.start_time.hour >= 12, Shift.start_time.hour < 16)
+                elif calloff_shift_type == "Evening":
+                    shift_q = shift_q.filter(Shift.start_time.hour >= 16, Shift.start_time.hour < 21)
+                elif calloff_shift_type == "Night":
+                    shift_q = shift_q.filter(Shift.start_time.hour >= 21)
+            calloff_shift = shift_q.first()
+            # Find available employees (stub: all employees not already scheduled for that shift)
+            all_emps = Employee.query.all()
+            scheduled_emps = {calloff_shift.employee.name} if calloff_shift and calloff_shift.employee else set()
+            for emp in all_emps:
+                if emp.name not in scheduled_emps:
+                    available_replacements.append(emp.name)
+        # Format context for AI
+        schedule_context = (
+            f"Call-off detected: {calloff_name} is unavailable for {calloff_shift_type or 'the shift'} on {calloff_date.strftime('%Y-%m-%d') if calloff_date else 'unknown date'}.\n"
+            f"Available replacements: {', '.join(available_replacements) if available_replacements else 'None found'}.\n"
+            "Suggest the best available replacement and ask the supervisor for approval before making any schedule changes."
+        )
     else:
-        schedule_context = rag_helpers.get_shifts_for_context(target_date, target_shift_type)
+        # Fallback to original logic for other intents
+        if year and month:
+            schedule_context = rag_helpers.get_shifts_for_month(year, month, target_shift_type)
+        else:
+            schedule_context = rag_helpers.get_shifts_for_context(target_date, target_shift_type)
 
     # Call policy search API internally
     try:

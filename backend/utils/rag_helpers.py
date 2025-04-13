@@ -212,7 +212,29 @@ def get_shifts_for_month(year, month, target_shift_type=None):
         for emp_name, info in emp_summary.items():
             context_lines.append(f"- {emp_name}: {info['count']} shifts on {', '.join(sorted(set(info['dates'])))}")
 
-        return "\n".join(context_lines)
+        # Add summary of who has the most shifts
+        if emp_summary:
+            max_count = max(info["count"] for info in emp_summary.values())
+            top_emps = [emp for emp, info in emp_summary.items() if info["count"] == max_count]
+            if len(top_emps) == 1:
+                context_lines.append(f"\nEmployee with the most {target_shift_type.lower() if target_shift_type else ''} shifts: {top_emps[0]} ({max_count} shifts)")
+            else:
+                context_lines.append(f"\nEmployees with the most {target_shift_type.lower() if target_shift_type else ''} shifts: {', '.join(top_emps)} ({max_count} shifts each)")
+        import json
+        context = "\n".join(context_lines)
+        # Append JSON block for LLM reliability
+        json_block = json.dumps([
+            {"employee": emp, "count": info["count"], "dates": info["dates"]}
+            for emp, info in emp_summary.items()
+        ])
+        # Log the JSON block for debugging
+        try:
+            from flask import current_app
+            current_app.logger.info(f"LLM schedule JSON block: {json_block}")
+        except Exception:
+            pass
+        context += f"\n\n=== Shift Data (JSON) ===\n{json_block}\n"
+        return context
 
     except Exception as e:
         import traceback

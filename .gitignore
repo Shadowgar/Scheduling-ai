@@ -4,6 +4,8 @@ venv/
 env/
 .venv/
 backend/new_venv/
+modelcontextprotocol-servers
+backend/tests
 /backend/new_venv310
 __pycache__/
 *.pyc

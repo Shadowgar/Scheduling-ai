@@ -8,9 +8,7 @@
 - [x] Design and implement employee preference data model
 - [x] Create UI for capturing employee shift preferences
 - [x] Develop quick fill buttons in ShiftModal
-- [ ] Create color-coded visualization for staffing levels
-- [ ] Develop shift conflict detection and highlighting
-- [ ] Implement role-based access control for supervisors
+
 
 #### Officer Profile Enhancement
 - [ ] Expand employee data model with additional fields (seniority, certifications, etc.)
