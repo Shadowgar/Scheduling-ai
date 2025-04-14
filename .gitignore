@@ -2,7 +2,10 @@
 md/
 venv/
 env/
+tests/
 .venv/
+/backend/inputs/
+/backend/migrations
 backend/new_venv/
 /modelcontextprotocol-servers
 backend/tests

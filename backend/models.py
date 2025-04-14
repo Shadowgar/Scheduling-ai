@@ -197,6 +197,7 @@ class PolicyDocument(db.Model):
     uploader_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True)
     content = db.Column(db.Text, nullable=False)  # Raw extracted text content
     file_data = db.Column(db.LargeBinary, nullable=True)  # Original file bytes
+    file_path = db.Column(db.String(512), nullable=True)  # Path to file on disk
 
     # New fields for document management status
     chunk_count = db.Column(db.Integer, nullable=False, default=0)
@@ -205,6 +206,7 @@ class PolicyDocument(db.Model):
 
     uploader = db.relationship('Employee', backref='uploaded_policies', lazy=True)
     chunks = db.relationship('PolicyChunk', backref='document', lazy=True, cascade="all, delete-orphan")
+    excel_sheets = db.relationship('ExcelSheet', backref='document', lazy=True, cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
@@ -217,6 +219,31 @@ class PolicyDocument(db.Model):
             'chunk_count': self.chunk_count,
             'status': self.status,
             'error_message': self.error_message,
+            'file_path': self.file_path,
+        }
+
+class ExcelSheet(db.Model):
+    __tablename__ = 'excel_sheets'
+
+    id = db.Column(db.Integer, primary_key=True)
+    document_id = db.Column(db.Integer, db.ForeignKey('policy_documents.id', ondelete='CASCADE'), nullable=False)
+    sheet_name = db.Column(db.String(255), nullable=False)
+    header_row = db.Column(db.Integer, nullable=True)
+    column_mappings = db.Column(JSONB, nullable=True)
+    preview_data = db.Column(JSONB, nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'document_id': self.document_id,
+            'sheet_name': self.sheet_name,
+            'header_row': self.header_row,
+            'column_mappings': self.column_mappings,
+            'preview_data': self.preview_data,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
 
 class Conversation(db.Model):

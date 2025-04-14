@@ -53,6 +53,16 @@ def upload_policy():
     try:
         # Read file content
         file_bytes = file.read()
+
+        # Save file to disk as well as to DB
+        UPLOAD_FOLDER = 'inputs/policy_uploads'
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        disk_filename = f"{timestamp}_{filename}"
+        save_path = os.path.join(UPLOAD_FOLDER, disk_filename)
+        with open(save_path, "wb") as f:
+            f.write(file_bytes)
         text_content = ""
 
         # Text extraction based on file type
@@ -94,7 +104,8 @@ def upload_policy():
             file_data=file_bytes,
             status="Pending",
             chunk_count=0,
-            error_message=None
+            error_message=None,
+            file_path=save_path
         )
         db.session.add(new_doc)
         db.session.flush()  # Get new_doc.id before commit
@@ -152,7 +163,9 @@ def list_policies():
     List all uploaded policy documents.
     """
     try:
-        policies = PolicyDocument.query.order_by(PolicyDocument.uploaded_at.desc()).all()
+        policies = PolicyDocument.query.filter(
+            PolicyDocument.file_type.in_(['txt', 'pdf', 'docx', 'doc'])
+        ).order_by(PolicyDocument.uploaded_at.desc()).all()
         return jsonify([p.to_dict() for p in policies]), 200
     except Exception as e:
         current_app.logger.error(f"Error listing policies: {str(e)}", exc_info=True)

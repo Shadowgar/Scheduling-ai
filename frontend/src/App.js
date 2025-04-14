@@ -167,6 +167,19 @@ function App() {
                             }
                         />
                         <Route
+                            path="/admin/documents"
+                            element={
+                                <ProtectedRoute
+                                    isAllowed={isAuthenticated && userAccessRole === 'supervisor'}
+                                    redirectTo="/schedule"
+                                >
+                                    <React.Suspense fallback={<div>Loading...</div>}>
+                                        {React.createElement(require('./components/DocumentManager').default)}
+                                    </React.Suspense>
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
                             path="/admin/policies/view/:id"
                             element={
                                 <ProtectedRoute

@@ -29,6 +29,7 @@ const Navbar = ({ currentUser, onLogout }) => {
                             <>
                                 <Link to="/admin/employees" className="navbar-item">Manage Employees</Link>
                                 <Link to="/admin/policies" className="navbar-item">Policies</Link>
+                                <Link to="/admin/documents" className="navbar-item">Document Management</Link>
                             </>
                         )}
                     </>

@@ -13,6 +13,8 @@ from routes.policy import policy_bp
 from routes.conversation import conversation_bp
 from routes.schedule import schedule_bp
 
+from routes.excel import excel_bp
+
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
@@ -32,6 +34,7 @@ def create_app(config_class=Config):
     app.register_blueprint(policy_bp)
     app.register_blueprint(conversation_bp)
     app.register_blueprint(schedule_bp)
+    app.register_blueprint(excel_bp)
     
     # JWT user loader
     @jwt.user_lookup_loader
